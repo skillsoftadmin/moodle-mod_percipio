@@ -90,6 +90,8 @@ In OAuth, client Id, client secret, and Percipio’s OAuth provider URL are need
 
 **Client Secret:** d8d9043e-b77f-4168-9958-2c90b256554b
 
+**Scope:** api
+
 **Organization ID:** 6343265d-d234-4967-abf9-00118f1bb904
 
 **Percipio OAuth URL:** https://oauth2-provider.develop.squads-dev.com

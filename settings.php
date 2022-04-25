@@ -31,29 +31,34 @@ if ($ADMIN->fulltree) {
 
     $settings->add(new admin_setting_configselect('percipio/authenticationmethod',
         get_string('authenticationmethod', 'mod_percipio'), get_string('authenticationmethod_help', 'mod_percipio'),
-        'tincan', ['oauth' => 'OAuth', 'tincan' => 'TINCAN'] ));
+        'service_account_bearer_token', ['oauth' => get_string('oauth', 'mod_percipio'),
+        'service_account_bearer_token' => get_string('serviceaccount', 'mod_percipio')] ));
 
     $settings->add(new admin_setting_configtext('percipio/clientid',
-        get_string('clientid', 'mod_percipio'), get_string('clientid_help', 'mod_percipio'), '', PARAM_RAW));
-    $settings->hide_if('percipio/clientid', 'percipio/authenticationmethod', 'eq', 'tincan');
+        get_string('clientid', 'mod_percipio'), get_string('clientid_help', 'mod_percipio'), '', PARAM_ALPHANUMEXT));
+    $settings->hide_if('percipio/clientid', 'percipio/authenticationmethod', 'eq', 'service_account_bearer_token');
 
     $settings->add(new admin_setting_configtext('percipio/clientsecret',
-        get_string('clientsecret', 'mod_percipio'), get_string('clientsecret_help', 'mod_percipio'), '', PARAM_RAW));
-    $settings->hide_if('percipio/clientsecret', 'percipio/authenticationmethod', 'eq', 'tincan');
+        get_string('clientsecret', 'mod_percipio'), get_string('clientsecret_help', 'mod_percipio'), '', PARAM_ALPHANUMEXT));
+    $settings->hide_if('percipio/clientsecret', 'percipio/authenticationmethod', 'eq', 'service_account_bearer_token');
+
+    $settings->add(new admin_setting_configtext('percipio/scope',
+    get_string('scope', 'mod_percipio'), get_string('scope_help', 'mod_percipio'), '', PARAM_TEXT));
+    $settings->hide_if('percipio/scope', 'percipio/authenticationmethod', 'eq', 'service_account_bearer_token');
 
     $settings->add(new admin_setting_configtext('percipio/bearertoken',
-        get_string('bearertoken', 'mod_percipio'), get_string('bearertoken_help', 'mod_percipio'), '', PARAM_RAW));
+        get_string('bearertoken', 'mod_percipio'), get_string('bearertoken_help', 'mod_percipio'), '', PARAM_TEXT));
     $settings->hide_if('percipio/bearertoken', 'percipio/authenticationmethod', 'eq', 'oauth');
 
     $settings->add(new admin_setting_configtext('percipio/organizationid',
-        get_string('organizationid', 'mod_percipio'), get_string('organizationid_help', 'mod_percipio'), '', PARAM_RAW));
+        get_string('organizationid', 'mod_percipio'), get_string('organizationid_help', 'mod_percipio'), '', PARAM_ALPHANUMEXT));
 
     $settings->add(new admin_setting_configtext('percipio/percipiourl',
         get_string('percipiourl', 'mod_percipio'), get_string('percipiourl_help', 'mod_percipio'),
-        'https://api.develop.squads-dev.com', PARAM_RAW));
+        'https://api.develop.squads-dev.com', PARAM_URL));
     $settings->hide_if('percipio/percipiourl', 'percipio/authenticationmethod', 'eq', 'oauth');
 
     $settings->add(new admin_setting_configtext('percipio/oauthurl',
-        get_string('oauthurl', 'mod_percipio'), get_string('oauthurl_help', 'mod_percipio'), '', PARAM_RAW));
-    $settings->hide_if('percipio/oauthurl', 'percipio/authenticationmethod', 'eq', 'tincan');
+        get_string('oauthurl', 'mod_percipio'), get_string('oauthurl_help', 'mod_percipio'), '', PARAM_URL));
+    $settings->hide_if('percipio/oauthurl', 'percipio/authenticationmethod', 'eq', 'service_account_bearer_token');
 }

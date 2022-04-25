@@ -25,5 +25,7 @@ require(__DIR__.'/../../config.php');
 require_once('lib.php');
 require_login();
 require_sesskey();
-$url = required_param('url', PARAM_RAW);
-echo getlaunchurl($url);
+$url = required_param('url', PARAM_URL);
+if (strpos($url, 'percipio.com') !== false) {
+    echo percipio_get_launchurl($url);
+}

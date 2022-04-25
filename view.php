@@ -24,7 +24,6 @@
 
 require(__DIR__.'/../../config.php');
 require_once(__DIR__.'/lib.php');
-require(__DIR__.'/classes/percipio_table.php');
 
 // Course_module ID.
 $id = optional_param('id', 0, PARAM_INT);
@@ -54,8 +53,9 @@ global $CFG; $PAGE; $DB; $USER;
 $modulecontext = context_module::instance($cm->id);
 $PAGE->set_context($modulecontext);
 $PAGE->set_url('/mod/percipio/view.php', array('id' => $cm->id));
+$PAGE->requires->jquery();
 
-$table = new percipio_table('percipio_report');
+$table = new mod_percipio\percipio_table('percipio_report');
 $table->is_downloading($download, $course->shortname, $course->shortname);
 
 $viewtabs = [];

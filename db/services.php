@@ -18,8 +18,8 @@
  * mod_percipio api external functions and service definitions.
  *
  * @package    mod_percipio
- * @copyright  2022 <Parthajeet.C@harbingergroup.com>
- * @license   http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
+ * @copyright  2022 Skillsoft Ireland Limited - All rights reserved.
+ * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 defined('MOODLE_INTERNAL') || die;
 
@@ -33,7 +33,7 @@ $functions = array(
         'type'        => 'write',
         'capabilities' => 'moodle/category:manage, moodle/course:create, moodle/course:visibility, moodle/course:update, '
             . 'moodle/course:changecategory, moodle/course:changeshortname, '
-            . 'moodle/course:changeidnumber, enrol/self:config'
+            . 'moodle/course:changeidnumber, moodle/site:config, enrol/self:config'
     ),
     'percipio_progress_tracking' => array(
         'classname'   => 'mod_percipio_api_external',

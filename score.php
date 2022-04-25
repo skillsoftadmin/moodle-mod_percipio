@@ -24,21 +24,26 @@
 
 defined('MOODLE_INTERNAL') || die();
 
-require_once($CFG->libdir.'/formslib.php');
+$postdata = data_submitted();
 
-// Hack to convert datefrom array to timestamp as after submitting filter mform it is sending datefrom in array format.
-if (isset($_POST["datefrom"]) && is_array($_POST["datefrom"])) {
-    $_POST["datefrom"] = strtotime($_POST["datefrom"]["day"].'-'.$_POST["datefrom"]["month"].'-'.$_POST["datefrom"]["year"]);
+// When report filter form is submitted dateto POST parameter is coming in array.
+if (!empty($postdata) && is_array($postdata->dateto) && empty($postdata->dateto) == false) {
+    $dateto = optional_param_array('dateto', time(), PARAM_INT);
+} else {
+    // And in the report table pagination link dateto GET parameter is in timestamp format.
+    $dateto = optional_param('dateto', time(), PARAM_INT);
 }
 
-// Hack to convert dateto array to timestamp as after submitting filter mform it is sending dateto in array format.
-if (isset($_POST["dateto"]) && is_array($_POST["dateto"])) {
-    $_POST["dateto"] = strtotime($_POST["dateto"]["day"].'-'.$_POST["dateto"]["month"].'-'.$_POST["dateto"]["year"]);
+// When report filter form is submitted datefrom POST parameter is coming in array.
+if (!empty($postdata) && is_array($postdata->datefrom) && empty($postdata->datefrom) == false) {
+    $datefrom = optional_param_array('datefrom', (time() - (86400 * 7)), PARAM_INT);
+} else {
+    // And in the report table pagination link datefrom GET parameter is in timestamp format.
+    $datefrom = optional_param('datefrom', (time() - (86400 * 7)), PARAM_INT);
 }
 
-$dateto = optional_param('dateto', time(), PARAM_ALPHANUM);
-$datefrom = optional_param('datefrom', (time() - (86400 * 7)), PARAM_ALPHANUM);
 $userid = optional_param('userid', 0, PARAM_INT);
+$showtable = true;
 
 $pageparams = '';
 $columns = $headers = $param = [];
@@ -72,74 +77,6 @@ $table->define_columns($columns);
 $table->define_headers($headers);
 
 
-/**
- * Percipio report filter class
- *
- * @package    mod_percipio
- * @copyright  2022 Skillsoft Ireland Limited - All rights reserved.
- * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
- */
-class percipio_report extends moodleform {
-    /**
-     * Defines forms elements
-     */
-    public function definition() {
-
-        global $DB, $dateto, $datefrom, $userid, $COURSE;
-
-        $mform = $this->_form; // Don't forget the underscore!
-        $mform->addElement('header', 'headername', 'Select Report Criteria');
-
-        $users = $DB->get_records_sql('SELECT u.id, u.firstname, u.lastname, u.email
-                                     FROM {course} c
-                                     JOIN {context} ct ON c.id = ct.instanceid
-                                     JOIN {role_assignments} ra ON ra.contextid = ct.id
-                                     JOIN {user} u ON u.id = ra.userid
-                                     JOIN {role} r ON r.id = ra.roleid
-                                     where c.id = ?', array($COURSE->id));
-        $data = array();
-        $data[0] = get_string('selectuser', 'mod_percipio');
-        foreach ($users as $user) {
-            $data[$user->id] = $user->firstname." ".$user->lastname." (".$user->email.")";
-        }
-        $mform->addElement('html', html_writer::start_div('col-md-6'));
-        $mform->addElement('autocomplete', 'userid', get_string('selectuser', 'mod_percipio'), $data);
-        $mform->setDefault('userid', $userid);
-        $mform->addElement('html', html_writer::end_div());
-
-        $mform->addElement('html', html_writer::start_div('col-md-6'));
-        $mform->addElement('date_selector', 'datefrom', get_string('datefrom', 'mod_percipio'));
-        $mform->setDefault('datefrom', $datefrom);
-        $mform->addElement('html', html_writer::end_div());
-
-        $mform->addElement('html', html_writer::start_div('col-md-6'));
-        $mform->addElement('date_selector', 'dateto', get_string('dateto', 'mod_percipio'));
-        $mform->setDefault('dateto', $dateto);
-        $mform->addElement('html', html_writer::end_div());
-
-        $buttonarray = array();
-        $buttonarray[] = &$mform->createElement('submit', 'submitbutton', 'Filter');
-        $mform->addGroup($buttonarray, 'buttonar', '', array(' '), false);
-        $mform->closeHeaderBefore('headername');
-    }
-
-    /**
-     * Defines the validation of the form elements
-     *
-     * @param stdClass $data the form data to be modified.
-     * @param stdClass $files the file data to be modified.
-     */
-    public function validation($data, $files) {
-        $errors = array();
-        $fromdate = $data['datefrom'];
-        $todate = $data['dateto'];
-        if ($todate < $fromdate) {
-            $errors['dateto'] = get_string('dateerror', 'mod_percipio');
-        }
-        return $errors;
-    }
-}
-
 $select = 'concat(u.firstname, \' \', u.lastname) as name, u.email, pa.timecreated as firstaccessed,
                      pa.timerevisited as lastaccessed, pa.timecompleted as completiontime, pa.totalduration,
                      pa.grade as score, pa.completionmessage as status';
@@ -148,16 +85,21 @@ $where = 'pa.cmid = ?';
 $param[] = $id;
 
 if (has_capability('mod/percipio:viewreports', $modulecontext)) {
-    $mform = new percipio_report('view.php?id='.$id.'&tab=report');
+    $mform = new \mod_percipio\report_filter_form('view.php?id='.$id.'&tab=report');
     if ($fdata = $mform->get_data()) {
-        if ($userid != 0) {
+        if ($fdata->userid != 0) {
             $where .= " AND pa.userid = ?";
-            $param[] = $userid;
+            $param[] = $fdata->userid;
         }
         if ($datefrom != 0) {
             $where .= " AND pa.timecompleted between ? AND ?";
-            $param[] = $datefrom;
-            $param[] = $dateto;
+            $datefrom = $param[] = $fdata->datefrom;
+            $dateto = $param[] = $fdata->dateto;
+        }
+    } else {
+        // If form validation error after submission do not display table.
+        if (data_submitted()) {
+            $showtable = false;
         }
     }
     if (!$table->is_downloading()) {
@@ -168,15 +110,13 @@ if (has_capability('mod/percipio:viewreports', $modulecontext)) {
     $param[] = $USER->id;
 }
 
-
-$table->set_sql($select, $from, $where, $param);
-
-$pageparams .= '&dateto='.$dateto;
-$pageparams .= '&datefrom='.$datefrom;
-if ($userid != 0) {
-    $pageparams .= '&userid='.$userid;
+if ($showtable) {
+    $table->set_sql($select, $from, $where, $param);
+    $pageparams .= '&dateto='.$dateto;
+    $pageparams .= '&datefrom='.$datefrom;
+    if ($userid != 0) {
+        $pageparams .= '&userid='.$userid;
+    }
+    $table->define_baseurl("$CFG->wwwroot/mod/percipio/view.php?id=$id&tab=report$pageparams");
+    $table->out(25, true);
 }
-
-$table->define_baseurl("$CFG->wwwroot/mod/percipio/view.php?id=$id&tab=report$pageparams");
-
-$table->out(25, true);

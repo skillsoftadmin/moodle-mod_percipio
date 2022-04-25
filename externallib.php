@@ -42,9 +42,9 @@ class mod_percipio_api_external extends external_api {
      * @return external_function_parameters
      */
     public static function percipio_import_course_parameters() {
-                return new external_function_parameters(
-                        array('data' => new external_value(PARAM_RAW, 'JSON parameters from Percipio to import course in Moodle'))
-                );
+        return new external_function_parameters(
+            array('data' => new external_value(PARAM_RAW, get_string('courseimportparam', 'mod_percipio')))
+        );
     }
 
     /**
@@ -64,7 +64,11 @@ class mod_percipio_api_external extends external_api {
         $params = self::validate_parameters(self::percipio_import_course_parameters(), array('data' => $coursedata));
         $course = json_decode($params["data"], true);
 
+        $syscontext = context_system::instance();
+
         // Check and enable self enrolment site-wide if not enabled.
+        self::validate_context($syscontext);
+        require_capability('moodle/site:config', $syscontext);
         $checkselfenrolmethod = $DB->get_record('config', array('name' => 'enrol_plugins_enabled'));
         if (!in_array("self", explode(",", $checkselfenrolmethod->value))) {
             $selfrecord = new stdClass();
@@ -95,7 +99,6 @@ class mod_percipio_api_external extends external_api {
                 $course['categoryid'] = $checkcategory->id;
                 $paramcatname = $checkcategory->name;
             } else {
-                $syscontext = context_system::instance();
                 self::validate_context($syscontext);
                 require_capability('moodle/category:manage', $syscontext);
                 $category = ['name' => $course['category'], 'descriptionformat' => 0, 'parent' => 0];
@@ -255,7 +258,7 @@ class mod_percipio_api_external extends external_api {
                     "introeditor" => ["text" => $course["summary"], "format" => 1],
                     "showdescription" => 0,
                     "urltype" => "tincan", // Harcoded as of now, later.
-                    // It can be 'link' or tincan depending upon feature enhancement from Percipio'.
+                    // It can be 'link' or 'tincan' depending upon feature enhancement from Percipio.
                     "additionalinfo" => json_encode($course["additionalMetadata"]),
                     "percipiotype" => $course['percipiotype'],
                     "displaylabel" => $course['displaylabel'],
@@ -316,7 +319,7 @@ class mod_percipio_api_external extends external_api {
                     "introeditor" => ["text" => $course["summary"], "format" => 1],
                     "showdescription" => 0,
                     "urltype" => "tincan", // Harcoded as of now, later.
-                    // It can be 'link' or tincan depending upon feature enhancement from Percipio'.
+                    // It can be 'link' or 'tincan' depending upon feature enhancement from Percipio.
                     "additionalinfo" => json_encode($course["additionalMetadata"]),
                     "percipiotype" => $course['percipiotype'],
                     "displaylabel" => $course['displaylabel'],
@@ -456,10 +459,10 @@ class mod_percipio_api_external extends external_api {
     public static function percipio_import_course_returns() {
         return new external_single_structure(
             array(
-                'moodlecourseid'       => new external_value(PARAM_INT, 'course id'),
-                'percipioid' => new external_value(PARAM_RAW, 'short name'),
-                'message' => new external_value(PARAM_RAW, 'response message'),
-                'code' => new external_value(PARAM_RAW, 'response code'),
+                'moodlecourseid'       => new external_value(PARAM_INT, get_string('courseid', 'mod_percipio')),
+                'percipioid' => new external_value(PARAM_ALPHANUMEXT, get_string('shortname', 'mod_percipio')),
+                'message' => new external_value(PARAM_TEXT, get_string('resmessage', 'mod_percipio')),
+                'code' => new external_value(PARAM_INT, get_string('code', 'mod_percipio')),
             )
         );
     }
@@ -471,8 +474,7 @@ class mod_percipio_api_external extends external_api {
      */
     public static function percipio_update_activity_progress_parameters() {
         return new external_function_parameters(
-            array('data' => new external_value(PARAM_RAW, 'Details of user grade to be
-                updated w.r.t to Moodle course - in JSON format'))
+            array('data' => new external_value(PARAM_RAW, get_string('trackingimportparam', 'mod_percipio')))
         );
     }
 
@@ -496,12 +498,12 @@ class mod_percipio_api_external extends external_api {
 
         $getcourse = $DB->get_record('percipio_entries', array('percipioid' => $trackingdata['courseshortname']));
         if (!$getcourse) {
-            throw new moodle_exception('error', 'webservice', '', 'No matching course found!');
+            throw new moodle_exception('error', 'webservice', '', get_string('nocourse', 'mod_percipio'));
         }
 
         $getuser = $DB->get_record('user', array('id' => $trackingdata['username']));
         if (!$getuser) {
-            throw new moodle_exception('error', 'webservice', '', 'No user found!');
+            throw new moodle_exception('error', 'webservice', '', get_string('nouser', 'mod_percipio'));
         }
 
         $context = context_course::instance($getcourse->courseid, MUST_EXIST);
@@ -639,7 +641,7 @@ class mod_percipio_api_external extends external_api {
             }
 
             $transaction->allow_commit();
-            return array('message' => 'Success', 'code' => 200);
+            return array('message' => get_string('success', 'mod_percipio'), 'code' => 200);
         } catch (Exception $e) {
             http_response_code(422);
             // Extra cleanup steps.
@@ -655,8 +657,8 @@ class mod_percipio_api_external extends external_api {
     public static function percipio_update_activity_progress_returns() {
         return new external_single_structure(
             array(
-                'message' => new external_value(PARAM_RAW, 'response message'),
-                'code' => new external_value(PARAM_RAW, 'response code'),
+                'message' => new external_value(PARAM_TEXT, get_string('resmessage', 'mod_percipio')),
+                'code' => new external_value(PARAM_INT, get_string('code', 'mod_percipio')),
             )
         );
     }

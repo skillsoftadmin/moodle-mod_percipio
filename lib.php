@@ -22,7 +22,7 @@
  * @license     http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 defined('MOODLE_INTERNAL') || die();
-
+require_once($CFG->libdir . '/filelib.php');
 /**
  * Return if the plugin supports $feature.
  *
@@ -48,6 +48,8 @@ function percipio_supports($feature) {
         case FEATURE_SHOW_DESCRIPTION:
             return true;
         case FEATURE_CONTROLS_GRADE_VISIBILITY:
+            return true;
+        case FEATURE_BACKUP_MOODLE2:
             return true;
         default:
             return null;
@@ -281,8 +283,7 @@ function percipio_get_coursemodule_info($coursemodule) {
  */
 function percipio_reset_course_form_definition($mform) {
     $mform->addElement('header', 'percipioheader', get_string('pluginname', 'percipio'));
-    $mform->addElement('advcheckbox', 'reset_percipios_attempts',
-        'Delete all Percipio attempts');
+    $mform->addElement('advcheckbox', 'reset_percipios_attempts', get_string('deleteallattempts', 'percipio'));
 }
 
 /**
@@ -346,7 +347,7 @@ function percipio_reset_userdata($data) {
         }
         $status[] = array(
             'component' => $componentstr,
-            'item' => 'Percipio attempts and grades deleted',
+            'item' => get_string('attemptsdeleted', 'percipio'),
             'error' => false);
     }
 
@@ -357,7 +358,7 @@ function percipio_reset_userdata($data) {
  * Fucntion to get course image
  * @return the image url.
  */
-function get_course_image() {
+function percipio_get_course_image() {
     global $COURSE, $CFG;
     $url = '';
     require_once($CFG->libdir . '/filelib.php');
@@ -382,7 +383,7 @@ function get_course_image() {
  * @param string $activityurl the Tin Can launch URL of this activity to be appended.
  * @return the launch url.
  */
-function getlaunchurl($activityurl) {
+function percipio_get_launchurl($activityurl) {
     global $USER, $CFG;
     $oauthtoken = '';
     $contenttoken = '';
@@ -397,14 +398,14 @@ function getlaunchurl($activityurl) {
         $oauthtoken = get_config('percipio', 'oauthToken');
         $tokenexpirytime = get_config('percipio', 'tokenExpiryTime');
         if (($oauthtoken != '') && (time() < $tokenexpirytime)) {
-            $contenttoken = getcontenttoken($oauthtoken, $activityurl);
+            $contenttoken = percipio_get_contenttoken($oauthtoken, $activityurl);
         } else {
-            $resp = getoauthtoken();
+            $resp = percipio_get_oauthtoken();
             $oauthtoken = get_config('percipio', 'oauthToken');
-            $contenttoken = getcontenttoken($oauthtoken, $activityurl);
+            $contenttoken = percipio_get_contenttoken($oauthtoken, $activityurl);
         }
     } else {
-        $contenttoken = getcontenttoken($bearertoken, $activityurl);
+        $contenttoken = percipio_get_contenttoken($bearertoken, $activityurl);
     }
     if (!$errormsg) {
         $launchurl = $redirecturl . '/content-integration/v1/tincan/launch?actor='.
@@ -422,44 +423,34 @@ function getlaunchurl($activityurl) {
  * @param string $activityurl the Tin Can launch URL of this activity to be appended.
  * @return the dynamic generated content token.
  */
-function getcontenttoken($token, $activityurl) {
+function percipio_get_contenttoken($token, $activityurl) {
     global $USER, $CFG;
-    $errormsg = false;
     $actor = '{"objectType":"Agent","account":{"homePage":"' . $CFG->wwwroot . '","name":"' . $USER->id . '"}}';
     $redirecturl = get_config('percipio', 'percipiourl');
     $orgid = get_config('percipio', 'organizationid');
     $endpointurl = $redirecturl . '/content-integration/v1/organizations/'.
         $orgid . '/content-token?actor=' . $actor . '&activity_id=' . $activityurl;
-    $curl = curl_init();
-    curl_setopt_array($curl, array(
-        CURLOPT_URL => $endpointurl,
-        CURLOPT_RETURNTRANSFER => true,
-        CURLOPT_FAILONERROR => true,
-        CURLOPT_MAXREDIRS => 10,
-        CURLOPT_TIMEOUT => 0,
-        CURLOPT_FOLLOWLOCATION => true,
-        CURLOPT_CUSTOMREQUEST => 'GET',
-        CURLOPT_HTTP_VERSION => CURL_HTTP_VERSION_1_1,
-        CURLOPT_HTTPHEADER => array(
-            'Authorization: Bearer '.$token,
-        ),
-    ));
-
-    $response = curl_exec($curl);
-    if (curl_errno($curl)) {
-        $errormsg = curl_error($curl);
-    }
-    curl_close($curl);
-    if (!$errormsg) {
-        $resp = json_decode($response);
-        if (isset($resp->contentToken)) {
-            return $resp->contentToken;
-        } else {
-            return false;
-        }
+       
+      $curl = new curl;
+      $options = array(
+      'RETURNTRANSFER' => 1,
+      'FAILONERROR' => 1,
+      'MAXREDIRS' => 10,
+      'TIMEOUT' => 0,
+      'FOLLOWLOCATION' => 1,
+      'HTTP_VERSION' => CURL_HTTP_VERSION_1_1,
+      'HTTPHEADER' => array(
+        'Authorization: Bearer '.$token,
+      ),
+      );
+    $response = $curl->get($endpointurl,$params = array(),$options);
+    $resp = json_decode($response);
+    if (isset($resp->contentToken)) {
+        return $resp->contentToken;
     } else {
-        return false;
+        return $response;
     }
+  
 }
 
 /**
@@ -467,42 +458,38 @@ function getcontenttoken($token, $activityurl) {
  *
  * @return the decoded response.
  */
-function getoauthtoken() {
+function percipio_get_oauthtoken() {
     global $USER, $CFG;
-    $errormsg = false;
     $orgid = get_config('percipio', 'organizationid');
     $redirecturl = get_config('percipio', 'percipiourl');
     $clientid = get_config('percipio', 'clientid');
     $clientsecret = get_config('percipio', 'clientsecret');
+    $scope = get_config('percipio', 'scope');
     $oauthurl = get_config('percipio', 'oauthurl');
     $endpointurl = $oauthurl . '/oauth2-provider/token';
     $data = array(
         "client_id" => $clientid,
         "client_secret" => $clientsecret,
         "grant_type" => "client_credentials",
-        "scope" => "api"
+        "scope" => $scope
     );
-    $curl = curl_init();
-    curl_setopt_array($curl, array(
-        CURLOPT_URL => $endpointurl,
-        CURLOPT_RETURNTRANSFER => true,
-        CURLOPT_FAILONERROR => true,
-        CURLOPT_MAXREDIRS => 10,
-        CURLOPT_TIMEOUT => 0,
-        CURLOPT_FOLLOWLOCATION => true,
-        CURLOPT_HTTP_VERSION => CURL_HTTP_VERSION_1_1,
-        CURLOPT_POSTFIELDS => json_encode($data),
-        CURLOPT_HTTPHEADER => array(
-            'accept: application/json',
-            'Content-Type: application/json',
-        ),
-    ));
-    $response = curl_exec($curl);
-    if (curl_errno($curl)) {
-        $errormsg = curl_error($curl);
-    }
-    curl_close($curl);
-    if (!$errormsg) {
+
+    $params = json_encode($data);
+    $curl = new curl;
+    $options = array(
+    'RETURNTRANSFER' => 1,
+    'FAILONERROR' => 1,
+    'MAXREDIRS' => 10,
+    'TIMEOUT' => 0,
+    'FOLLOWLOCATION' => 1,
+    'HTTP_VERSION' => CURL_HTTP_VERSION_1_1,
+    'HTTPHEADER' => array(
+    'accept: application/json',
+    'Content-Type: application/json',
+    ),
+    );
+    $response = $curl->post($endpointurl,$params,$options);
+    if (!$curl->error) {
         $decoded = json_decode($response);
         $tokenexpirytime = time() + ($decoded->expires_in);
         set_config('oauthToken', $decoded->access_token, 'percipio');

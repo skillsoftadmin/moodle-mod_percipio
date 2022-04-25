@@ -21,10 +21,12 @@
  * @copyright   2022 Skillsoft Ireland Limited - All rights reserved.
  * @license     http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
-
+namespace mod_percipio;
 defined('MOODLE_INTERNAL') || die();
 
 require_once($CFG->libdir . '/tablelib.php');
+
+use table_sql;
 
 /**
  * percipio_table report class.
@@ -33,7 +35,7 @@ require_once($CFG->libdir . '/tablelib.php');
  * @copyright  2022 Skillsoft Ireland Limited - All rights reserved.
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
-class percipio_table extends \table_sql {
+class percipio_table extends table_sql {
 
     /**
      * checks the firstaccessed and returns in date format

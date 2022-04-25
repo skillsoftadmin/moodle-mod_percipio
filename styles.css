@@ -1,4 +1,4 @@
-#fitem_id_completion + div, #id_modstandardgrade, .show_error {
+.path-mod-percipio #fitem_id_completion + div, .path-mod-percipio #id_modstandardgrade, .path-mod-percipio .show_error {
 	display:none;
 }
 

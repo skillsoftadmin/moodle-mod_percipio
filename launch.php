@@ -24,7 +24,6 @@
 
 defined('MOODLE_INTERNAL') || die();
 
-$PAGE->requires->js('/mod/percipio/js/jquery.min.js');
 $PAGE->requires->js('/mod/percipio/js/launch.js');
 $PAGE->requires->js_init_call('callajax', [$moduleinstance->launchurl, sesskey()]);
 
@@ -36,6 +35,7 @@ $redirecturl = get_config('percipio', 'percipiourl');
 $clientid = get_config('percipio', 'clientid');
 $clientsecret = get_config('percipio', 'clientsecret');
 $oauthurl = get_config('percipio', 'oauthurl');
+$scope = get_config('percipio', 'scope');
 
 $intro = format_module_intro('percipio', $moduleinstance, $cm->id);
 
@@ -47,7 +47,7 @@ $html .= html_writer::end_tag('div');
 $html .= html_writer::end_tag('div');
 
 $html .= html_writer::start_tag('div', array('class' => 'row'));
-$html .= html_writer::div(html_writer::img(get_course_image(), '', array('class' => 'img-cover')), 'col-md-3');
+$html .= html_writer::div(html_writer::img(percipio_get_course_image(), '', array('class' => 'img-cover')), 'col-md-3');
 if (strip_tags($intro) != '') {
     $html .= html_writer::div($intro, 'intro col-md-9');
 }
@@ -96,11 +96,12 @@ if ($moduleinstance->btntxt != '') {
 }
 
 if ($moduleinstance->urltype == 'tincan') {
-    if ($authenticationmethod == "tincan" && ($bearertoken == '' || $orgid == '' || $redirecturl == '')) {
+    if ($authenticationmethod == "service_account_bearer_token" && ($bearertoken == '' || $orgid == '' || $redirecturl == '')) {
         if (has_capability('mod/percipio:manage', $modulecontext)) {
             $html .= html_writer::div(get_string('settingincomplete', 'mod_percipio', $CFG->wwwroot), 'alert alert-danger top');
         }
-    } else if ($authenticationmethod == "oauth" && ($clientid == '' || $orgid == '' || $clientsecret == '' || $oauthurl == '')) {
+    } else if ($authenticationmethod == "oauth" &&
+        ($clientid == '' || $orgid == '' || $clientsecret == '' || $oauthurl == '' || $scope == '')) {
         if (has_capability('mod/percipio:manage', $modulecontext)) {
             $html .= html_writer::div(get_string('settingincomplete', 'mod_percipio', $CFG->wwwroot), 'alert alert-danger top');
         }
@@ -110,7 +111,7 @@ if ($moduleinstance->urltype == 'tincan') {
 }
 
 $html .= html_writer::start_tag('div', array('class' => 'show_error alert alert-danger top'));
-$html .= html_writer::span("Error! Please try again.");
+$html .= html_writer::span(get_string('curlerror', 'mod_percipio'));
 $html .= html_writer::start_tag('button', array('class' => 'close', 'data-dismiss' => 'alert', 'aria-label' => 'Close'));
 $html .= html_writer::span('&times;', '', array('aria-hidden' => 'true'));
 $html .= html_writer::end_tag('button');

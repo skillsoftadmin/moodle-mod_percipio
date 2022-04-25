@@ -66,11 +66,11 @@ class mod_percipio_mod_form extends moodleform_mod {
         }
 
         $mform->addElement('hidden', 'launchurl');
-        $mform->setType('launchurl', PARAM_RAW);
+        $mform->setType('launchurl', PARAM_URL);
 
         $mform->addElement('hidden', 'urltype');
         $mform->setDefault('urltype', 'tincan');
-        $mform->setType('urltype', PARAM_RAW);
+        $mform->setType('urltype', PARAM_TEXT);
 
         $mform->addElement('hidden', 'btntxt');
         $mform->setType('btntxt', PARAM_TEXT);
