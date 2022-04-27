@@ -105,3 +105,5 @@ $string['privacy:metadata:percipio_attempt:timecompleted'] = 'The time when you 
 $string['privacy:metadata:percipio_attempt:timerevisited'] = 'The time when you revisited the content is sent from the remote system to moodle.';
 $string['privacy:metadata:percipio_attempt:timemodified'] = 'The modified time you revisited the content is sent from the remote system to moodle.';
 $string['privacy:metadata:percipio_attempt:totalduration'] = 'The total duration which you took to complete the content is sent from the remote system to moodle.';
+$string['privacy:metadata:percipio:externalpurpose'] = 'This plugin only sends the moodle userid to the percipio.';
+$string['privacy:metadata:percipio:userid'] = 'Userid passed from moodle to percipio.';

@@ -429,28 +429,27 @@ function percipio_get_contenttoken($token, $activityurl) {
     $redirecturl = get_config('percipio', 'percipiourl');
     $orgid = get_config('percipio', 'organizationid');
     $endpointurl = $redirecturl . '/content-integration/v1/organizations/'.
-        $orgid . '/content-token?actor=' . $actor . '&activity_id=' . $activityurl;
-       
-      $curl = new curl;
-      $options = array(
-      'RETURNTRANSFER' => 1,
-      'FAILONERROR' => 1,
-      'MAXREDIRS' => 10,
-      'TIMEOUT' => 0,
-      'FOLLOWLOCATION' => 1,
-      'HTTP_VERSION' => CURL_HTTP_VERSION_1_1,
-      'HTTPHEADER' => array(
-        'Authorization: Bearer '.$token,
-      ),
-      );
-    $response = $curl->get($endpointurl,$params = array(),$options);
+    $orgid . '/content-token?actor=' . $actor . '&activity_id=' . $activityurl;
+
+    $curl = new curl;
+    $options = array(
+        'RETURNTRANSFER' => 1,
+        'FAILONERROR' => 1,
+        'MAXREDIRS' => 10,
+        'TIMEOUT' => 0,
+        'FOLLOWLOCATION' => 1,
+        'HTTP_VERSION' => CURL_HTTP_VERSION_1_1,
+        'HTTPHEADER' => array(
+            'Authorization: Bearer '.$token,
+        ),
+    );
+    $response = $curl->get($endpointurl, $params = array(), $options);
     $resp = json_decode($response);
     if (isset($resp->contentToken)) {
         return $resp->contentToken;
     } else {
         return $response;
     }
-  
 }
 
 /**
@@ -488,7 +487,7 @@ function percipio_get_oauthtoken() {
     'Content-Type: application/json',
     ),
     );
-    $response = $curl->post($endpointurl,$params,$options);
+    $response = $curl->post($endpointurl, $params, $options);
     if (!$curl->error) {
         $decoded = json_decode($response);
         $tokenexpirytime = time() + ($decoded->expires_in);

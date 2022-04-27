@@ -72,6 +72,10 @@ class provider implements
             'totalduration' => 'privacy:metadata:percipio_attempt:totalduration',
         ], 'privacy:metadata:percipio_attempt');
 
+        $collection->add_external_location_link('percipio', [
+            'userid' => 'privacy:metadata:percipio:userid'
+        ], 'privacy:metadata:percipio:externalpurpose');
+
         return $collection;
     }
 
