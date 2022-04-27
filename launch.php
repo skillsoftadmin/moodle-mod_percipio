@@ -96,12 +96,13 @@ if ($moduleinstance->btntxt != '') {
 }
 
 if ($moduleinstance->urltype == 'tincan') {
-    if ($authenticationmethod == "service_account_bearer_token" && ($bearertoken == '' || $orgid == '' || $redirecturl == '')) {
+    if ($authenticationmethod == '' || ($authenticationmethod == "service_account_bearer_token" &&
+        ($bearertoken == '' || $orgid == '' || $redirecturl == ''))) {
         if (has_capability('mod/percipio:manage', $modulecontext)) {
             $html .= html_writer::div(get_string('settingincomplete', 'mod_percipio', $CFG->wwwroot), 'alert alert-danger top');
         }
-    } else if ($authenticationmethod == "oauth" &&
-        ($clientid == '' || $orgid == '' || $clientsecret == '' || $oauthurl == '' || $scope == '')) {
+    } else if ($authenticationmethod == '' || ($authenticationmethod == "oauth" &&
+        ($clientid == '' || $orgid == '' || $clientsecret == '' || $oauthurl == '' || $scope == ''))) {
         if (has_capability('mod/percipio:manage', $modulecontext)) {
             $html .= html_writer::div(get_string('settingincomplete', 'mod_percipio', $CFG->wwwroot), 'alert alert-danger top');
         }
