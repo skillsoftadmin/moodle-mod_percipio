@@ -44,7 +44,7 @@ class percipio_table extends table_sql {
      */
     public function col_firstaccessed($record) {
         if (isset($record->firstaccessed)) {
-            return date('d-M-y h:i:s A', $record->firstaccessed);
+            return userdate($record->firstaccessed, get_string('strftimedatetime'));
         } else {
             return '';
         }
@@ -57,7 +57,7 @@ class percipio_table extends table_sql {
      */
     public function col_lastaccessed($record) {
         if (isset($record->lastaccessed)) {
-            return date('d-M-y h:i:s A', $record->lastaccessed);
+            return userdate($record->lastaccessed, get_string('strftimedatetime'));
         } else {
             return '';
         }
@@ -70,7 +70,7 @@ class percipio_table extends table_sql {
      */
     public function col_completiontime($record) {
         if (isset($record->completiontime)) {
-            return date('d-M-y h:i:s A', $record->completiontime);
+            return userdate($record->completiontime, get_string('strftimedatetime'));
         } else {
             return '';
         }
