@@ -57,12 +57,11 @@ if ($ADMIN->fulltree) {
     $settings->add(new admin_setting_configtext('percipio/percipiourl',
         get_string('percipiourl', 'mod_percipio'), get_string('percipiourl_help', 'mod_percipio'),
         '', PARAM_URL));
-    
     $settings->add(new admin_setting_configtext('percipio/organizationid',
     get_string('organizationid', 'mod_percipio'), get_string('organizationid_help', 'mod_percipio'), '', PARAM_ALPHANUMEXT));
 
     $settings->add(new admin_setting_configselect('percipio/piiinfo',
-        get_string('piiinfo', 'mod_percipio'),'',
+        get_string('piiinfo', 'mod_percipio'), '',
         'no', ['yes' => get_string('pii_yes', 'mod_percipio'),
         'no' => get_string('pii_no', 'mod_percipio')] ));
 }

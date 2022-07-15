@@ -395,7 +395,6 @@ function percipio_get_launchurl($activityurl) {
     $orgid = get_config('percipio', 'organizationid');
     $redirecturl = get_config('percipio', 'percipiourl');
     $actor = '{"objectType":"Agent","account":{"homePage":"' . $CFG->wwwroot . '","name":"' . $USER->id . '"}}';
-  
     $authenticationmethod = get_config('percipio', 'authenticationmethod');
     if ($authenticationmethod == 'oauth') {
         $oauthtoken = get_config('percipio', 'oauthToken');
@@ -432,18 +431,14 @@ function percipio_get_contenttoken($token, $activityurl) {
     $actor = '{"objectType":"Agent","account":{"homePage":"' . $CFG->wwwroot . '","name":"' . $USER->id . '"}}';
     $redirecturl = get_config('percipio', 'percipiourl');
     $orgid = get_config('percipio', 'organizationid');
-    if($piiinfo == 'yes')
-    {
+    if ($piiinfo == 'yes') {
         $userattributes = '{"firstName":"'. $USER->firstname .'","lastName":"'. $USER->lastname .'","email":"'. $USER->email .'"}';
         $endpointurl = $redirecturl . '/content-integration/v1/organizations/'.
-    $orgid . '/content-token?actor=' . $actor . '&activity_id=' . $activityurl . '&user_attributes=' . $userattributes;
-    }
-    else
-    {
+        $orgid . '/content-token?actor=' . $actor . '&activity_id=' . $activityurl . '&user_attributes=' . $userattributes;
+    } else {
         $endpointurl = $redirecturl . '/content-integration/v1/organizations/'.
-    $orgid . '/content-token?actor=' . $actor . '&activity_id=' . $activityurl;
+        $orgid . '/content-token?actor=' . $actor . '&activity_id=' . $activityurl;
     }
-   
     $curl = new curl;
     $options = array(
         'RETURNTRANSFER' => 1,
@@ -519,18 +514,15 @@ function percipio_get_oauthtoken() {
  *
  * Please note this functions does not verify any access control,
  * the calling code is responsible for all validation (usually it is the form definition).
- *
- * @param array $editoroptions course description editor options
  * @param object $data  - all the data needed for an entry in the 'course' table
- * @return object new course instance
+ * @param array $editoroptions course description editor options
+ * @return the course instance
+ *
  */
-
-function custom_create_course($data, $editoroptions = NULL) {
+function custom_create_course($data, $editoroptions = null) {
     global $DB, $CFG;
-
-    //check the categoryid - must be given for all new courses
-    $category = $DB->get_record('course_categories', array('id'=>$data->category), '*', MUST_EXIST);
-
+    // Check the categoryid - must be given for all new courses
+    $category = $DB->get_record('course_categories', array('id' => $data->category), '*', MUST_EXIST);
     // Check if the shortname already exists.
     if (!empty($data->shortname)) {
         if ($DB->record_exists('course', array('shortname' => $data->shortname))) {
@@ -592,8 +584,8 @@ function custom_create_course($data, $editoroptions = NULL) {
     if ($editoroptions) {
         // Save the files used in the summary editor and store
         $data = file_postupdate_standard_editor($data, 'summary', $editoroptions, $context, 'course', 'summary', 0);
-        $DB->set_field('course', 'summary', $data->summary, array('id'=>$newcourseid));
-        $DB->set_field('course', 'summaryformat', $data->summary_format, array('id'=>$newcourseid));
+        $DB->set_field('course', 'summary', $data->summary, array('id' => $newcourseid));
+        $DB->set_field('course', 'summaryformat', $data->summary_format, array('id' => $newcourseid));
     }
     if ($overviewfilesoptions = course_overviewfiles_options($newcourseid)) {
         // Save the course overviewfiles
