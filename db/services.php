@@ -43,12 +43,20 @@ $functions = array(
         'type'        => 'write',
         'capabilities' => 'moodle/grade:manage'
     ),
+    'percipio_image_upload' => array(
+        'classname'   => 'mod_percipio_api_external',
+        'methodname'  => 'percipio_upload_image',
+        'classpath'   => 'mod/percipio/externallib.php',
+        'description' => 'Upload image into Moodle w.r.t a course',
+        'type'        => 'write',
+        'capabilities' => ''
+    ),
 );
 
 // We define the services to install as pre-build services. A pre-build service is not editable by administrator.
 $services = array(
     'Percipio services' => array(
-    'functions' => array ('percipio_asset_import', 'percipio_progress_tracking'),
+    'functions' => array ('percipio_asset_import', 'percipio_progress_tracking', 'percipio_image_upload'),
     'restrictedusers' => 0,
     'enabled' => 1,
     'shortname' => 'Percipio-API'

@@ -23,6 +23,9 @@
  */
 defined('MOODLE_INTERNAL') || die();
 require_once($CFG->libdir . '/filelib.php');
+require_once($CFG->libdir.'/completionlib.php');
+require_once($CFG->libdir.'/datalib.php');
+require_once($CFG->dirroot.'/course/format/lib.php');
 /**
  * Return if the plugin supports $feature.
  *
@@ -392,7 +395,6 @@ function percipio_get_launchurl($activityurl) {
     $orgid = get_config('percipio', 'organizationid');
     $redirecturl = get_config('percipio', 'percipiourl');
     $actor = '{"objectType":"Agent","account":{"homePage":"' . $CFG->wwwroot . '","name":"' . $USER->id . '"}}';
-
     $authenticationmethod = get_config('percipio', 'authenticationmethod');
     if ($authenticationmethod == 'oauth') {
         $oauthtoken = get_config('percipio', 'oauthToken');
@@ -425,12 +427,18 @@ function percipio_get_launchurl($activityurl) {
  */
 function percipio_get_contenttoken($token, $activityurl) {
     global $USER, $CFG;
+    $piiinfo = get_config('percipio', 'piiinfo');
     $actor = '{"objectType":"Agent","account":{"homePage":"' . $CFG->wwwroot . '","name":"' . $USER->id . '"}}';
     $redirecturl = get_config('percipio', 'percipiourl');
     $orgid = get_config('percipio', 'organizationid');
-    $endpointurl = $redirecturl . '/content-integration/v1/organizations/'.
-    $orgid . '/content-token?actor=' . $actor . '&activity_id=' . $activityurl;
-
+    if ($piiinfo == 'yes') {
+        $userattributes = '{"firstName":"'. $USER->firstname .'","lastName":"'. $USER->lastname .'","email":"'. $USER->email .'"}';
+        $endpointurl = $redirecturl . '/content-integration/v1/organizations/'.
+        $orgid . '/content-token?actor=' . $actor . '&activity_id=' . $activityurl . '&user_attributes=' . $userattributes;
+    } else {
+        $endpointurl = $redirecturl . '/content-integration/v1/organizations/'.
+        $orgid . '/content-token?actor=' . $actor . '&activity_id=' . $activityurl;
+    }
     $curl = new curl;
     $options = array(
         'RETURNTRANSFER' => 1,
@@ -498,4 +506,141 @@ function percipio_get_oauthtoken() {
     } else {
         return false;
     }
+}
+
+
+/**
+ * Create a percipio course and either return a $course object
+ *
+ * Please note this functions does not verify any access control,
+ * the calling code is responsible for all validation (usually it is the form definition).
+ * @param object $data  - all the data needed for an entry in the 'course' table
+ * @param array $editoroptions course description editor options
+ * @return the course instance
+ *
+ */
+function custom_create_course($data, $editoroptions = null) {
+    global $DB, $CFG;
+    // Check the categoryid - must be given for all new courses.
+    $category = $DB->get_record('course_categories', array('id' => $data->category), '*', MUST_EXIST);
+    // Check if the shortname already exists.
+    if (!empty($data->shortname)) {
+        if ($DB->record_exists('course', array('shortname' => $data->shortname))) {
+            throw new moodle_exception('shortnametaken', '', '', $data->shortname);
+        }
+    }
+
+    // Check if the idnumber already exists.
+    if (!empty($data->idnumber)) {
+        if ($DB->record_exists('course', array('idnumber' => $data->idnumber))) {
+            throw new moodle_exception('courseidnumbertaken', '', '', $data->idnumber);
+        }
+    }
+
+    if (empty($CFG->enablecourserelativedates)) {
+        // Make sure we're not setting the relative dates mode when the setting is disabled.
+        unset($data->relativedatesmode);
+    }
+
+    if ($errorcode = course_validate_dates((array)$data)) {
+        throw new moodle_exception($errorcode);
+    }
+
+    // Check if timecreated is given.
+    $data->timecreated  = !empty($data->timecreated) ? $data->timecreated : time();
+    $data->timemodified = $data->timecreated;
+
+    // Place at beginning of any category.
+    $data->sortorder = 0;
+
+    if ($editoroptions) {
+        // Summary text is updated later, we need context to store the files first.
+        $data->summary = '';
+        $data->summary_format = FORMAT_HTML;
+    }
+
+    // Get default completion settings as a fallback in case the enablecompletion field is not set.
+    $courseconfig = get_config('moodlecourse');
+    $defaultcompletion = !empty($CFG->enablecompletion) ? $courseconfig->enablecompletion : COMPLETION_DISABLED;
+    $enablecompletion = $data->enablecompletion ?? $defaultcompletion;
+    // Unset showcompletionconditions when completion tracking is not enabled for the course.
+    if ($enablecompletion == COMPLETION_DISABLED) {
+        unset($data->showcompletionconditions);
+    } else if (!isset($data->showcompletionconditions)) {
+        // Show completion conditions should have a default value when completion is enabled. Set it to the site defaults.
+        // This scenario can happen when a course is created through data generators or through a web service.
+        $data->showcompletionconditions = $courseconfig->showcompletionconditions;
+    }
+
+    if (!isset($data->visible)) {
+        // Data not from form, add missing visibility info.
+        $data->visible = $category->visible;
+    }
+    $data->visibleold = $data->visible;
+
+    $newcourseid = $DB->insert_record('course', $data);
+    $context = context_course::instance($newcourseid, MUST_EXIST);
+
+    if ($editoroptions) {
+        // Save the files used in the summary editor and store.
+        $data = file_postupdate_standard_editor($data, 'summary', $editoroptions, $context, 'course', 'summary', 0);
+        $DB->set_field('course', 'summary', $data->summary, array('id' => $newcourseid));
+        $DB->set_field('course', 'summaryformat', $data->summary_format, array('id' => $newcourseid));
+    }
+    if ($overviewfilesoptions = course_overviewfiles_options($newcourseid)) {
+        // Save the course overviewfiles
+        $data = file_postupdate_standard_filemanager($data, 'overviewfiles', $overviewfilesoptions, $context, 'course', 'overviewfiles', 0);
+    }
+
+    // Update course format options.
+    course_get_format($newcourseid)->update_course_format_options($data);
+
+    $course = course_get_format($newcourseid)->get_course();
+
+    // Purge appropriate caches in case fix_course_sortorder() did not change anything.
+    cache_helper::purge_by_event('changesincourse');
+
+    // Trigger a course created event.
+    $event = \core\event\course_created::create(array(
+        'objectid' => $course->id,
+        'context' => context_course::instance($course->id),
+        'other' => array('shortname' => $course->shortname,
+            'fullname' => $course->fullname)
+    ));
+
+    $event->trigger();
+
+    // Setup the blocks.
+    blocks_add_default_course_blocks($course);
+
+    // Create default section and initial sections if specified (unless they've already been created earlier).
+    // We do not want to call course_create_sections_if_missing() because to avoid creating course cache.
+    $numsections = isset($data->numsections) ? $data->numsections : 0;
+    $existingsections = $DB->get_fieldset_sql('SELECT section from {course_sections} WHERE course = ?', [$newcourseid]);
+    $newsections = array_diff(range(0, $numsections), $existingsections);
+    foreach ($newsections as $sectionnum) {
+        course_create_section($newcourseid, $sectionnum, true);
+    }
+
+    // Save any custom role names.
+    save_local_role_names($course->id, (array)$data);
+
+    // Set up enrolments.
+    enrol_course_updated(true, $course, $data);
+
+    // Update course tags.
+    if (isset($data->tags)) {
+        core_tag_tag::set_item_tags('core', 'course', $course->id, context_course::instance($course->id), $data->tags);
+    }
+
+    // Save custom fields if there are any of them in the form.
+    $handler = core_course\customfield\course_handler::create();
+    // Make sure to set the handler's parent context first.
+    $coursecatcontext = context_coursecat::instance($category->id);
+    $handler->set_parent_context($coursecatcontext);
+    // Save the custom field data.
+    $data->id = $course->id;
+    $handler->instance_form_save($data, true);
+
+    return $course;
 }
