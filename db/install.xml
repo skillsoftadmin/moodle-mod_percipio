@@ -53,6 +53,8 @@
         <FIELD NAME="courseid" TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="false" COMMENT="Course id"/>
         <FIELD NAME="percipioid" TYPE="char" LENGTH="100" NOTNULL="true" SEQUENCE="false" COMMENT="percipio content id"/>
         <FIELD NAME="cmid" TYPE="int" LENGTH="10" NOTNULL="false" SEQUENCE="false" COMMENT="course module id"/>
+        <FIELD NAME="imageurl" TYPE="text" NOTNULL="false" SEQUENCE="false" COMMENT="percipio image url"/>
+        <FIELD NAME="imageuploaded" TYPE="int" LENGTH="4" DEFAULT="0" NOTNULL="true" SEQUENCE="false" COMMENT="percipio image uploaded flag"/>
         <FIELD NAME="timemodified" TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="false"/>
       </FIELDS>
       <KEYS>

@@ -50,15 +50,19 @@ if ($ADMIN->fulltree) {
         get_string('bearertoken', 'mod_percipio'), get_string('bearertoken_help', 'mod_percipio'), '', PARAM_TEXT));
     $settings->hide_if('percipio/bearertoken', 'percipio/authenticationmethod', 'eq', 'oauth');
 
-    $settings->add(new admin_setting_configtext('percipio/organizationid',
-        get_string('organizationid', 'mod_percipio'), get_string('organizationid_help', 'mod_percipio'), '', PARAM_ALPHANUMEXT));
-
-    $settings->add(new admin_setting_configtext('percipio/percipiourl',
-        get_string('percipiourl', 'mod_percipio'), get_string('percipiourl_help', 'mod_percipio'),
-        'https://api.develop.squads-dev.com', PARAM_URL));
-    $settings->hide_if('percipio/percipiourl', 'percipio/authenticationmethod', 'eq', 'oauth');
-
     $settings->add(new admin_setting_configtext('percipio/oauthurl',
         get_string('oauthurl', 'mod_percipio'), get_string('oauthurl_help', 'mod_percipio'), '', PARAM_URL));
     $settings->hide_if('percipio/oauthurl', 'percipio/authenticationmethod', 'eq', 'service_account_bearer_token');
+
+    $settings->add(new admin_setting_configtext('percipio/percipiourl',
+        get_string('percipiourl', 'mod_percipio'), get_string('percipiourl_help', 'mod_percipio'),
+        '', PARAM_URL));
+    
+    $settings->add(new admin_setting_configtext('percipio/organizationid',
+    get_string('organizationid', 'mod_percipio'), get_string('organizationid_help', 'mod_percipio'), '', PARAM_ALPHANUMEXT));
+
+    $settings->add(new admin_setting_configselect('percipio/piiinfo',
+        get_string('piiinfo', 'mod_percipio'),'',
+        'no', ['yes' => get_string('pii_yes', 'mod_percipio'),
+        'no' => get_string('pii_no', 'mod_percipio')] ));
 }

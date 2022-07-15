@@ -25,6 +25,8 @@
 defined('MOODLE_INTERNAL') || die();
 
 require_once($CFG->libdir . "/externallib.php");
+require_once($CFG->dirroot.'/mod/scorm/mod_form.php');
+require_once($CFG->dirroot.'/mod/scorm/lib.php');
 
 /**
  * Percipio external functions
@@ -60,23 +62,12 @@ class mod_percipio_api_external extends external_api {
         require_once($CFG->libdir."/filelib.php");
         require_once($CFG->dirroot . '/course/modlib.php');
         require_once($CFG->dirroot . '/mod/percipio/mod_form.php');
+        require_once($CFG->dirroot . '/mod/percipio/lib.php');
 
         $params = self::validate_parameters(self::percipio_import_course_parameters(), array('data' => $coursedata));
         $course = json_decode($params["data"], true);
 
         $syscontext = context_system::instance();
-
-        // Check and enable self enrolment site-wide if not enabled.
-        self::validate_context($syscontext);
-        require_capability('moodle/site:config', $syscontext);
-        $checkselfenrolmethod = $DB->get_record('config', array('name' => 'enrol_plugins_enabled'));
-        if (!in_array("self", explode(",", $checkselfenrolmethod->value))) {
-            $selfrecord = new stdClass();
-            $selfrecord->id = $checkselfenrolmethod->id;
-            $selfrecord->value = $checkselfenrolmethod->value.",self";
-            $DB->update_record('config', $selfrecord);
-            purge_caches();
-        }
 
         $enableself = false;
 
@@ -85,7 +76,6 @@ class mod_percipio_api_external extends external_api {
         $course['lang'] = 'en';
         $course["visible"] = (int) $course["visible"];
 
-        $availablethemes = core_component::get_plugin_list('theme');
         $availablelangs = get_string_manager()->get_list_of_translations();
 
         // Check and create category if needed.
@@ -118,6 +108,8 @@ class mod_percipio_api_external extends external_api {
         }
 
         $course['category'] = $course['categoryid'];
+
+
         $checkexistingcourse = $DB->get_record('course', array('shortname' => $course['shortname']));
 
         if (!$checkexistingcourse) {
@@ -186,17 +178,6 @@ class mod_percipio_api_external extends external_api {
             }
         }
 
-        // Make sure theme is valid.
-        if (array_key_exists('forcetheme', $course)) {
-            if (!empty($CFG->allowcoursethemes)) {
-                if (empty($availablethemes[$course['forcetheme']])) {
-                    throw new moodle_exception('errorinvalidparam', 'webservice', '', 'forcetheme');
-                } else {
-                    $course['theme'] = $course['forcetheme'];
-                }
-            }
-        }
-
         // Force visibility if ws user doesn't have the permission to set it.
         $category = $DB->get_record('course_categories', array('id' => $course['categoryid']));
         if (!has_capability('moodle/course:visibility', $context)) {
@@ -239,160 +220,205 @@ class mod_percipio_api_external extends external_api {
         }
 
         $percipiomodule = $DB->get_record('modules', array('name' => $course["courseformatoptions"][0]["value"]));
-        $mformclassname = 'mod_percipio_mod_form';
 
+       
         try {
+            $getpercipioentry = $DB->get_record('percipio_entries', array('courseid' => $course['id']));
+            if($course["courseformatoptions"][0]["value"] == 'percipio' && $course['link'] != '')
+            {
+                $mformclassname = 'mod_percipio_mod_form';
+                $fromform = [
+                    "name" => $course['fullname'],
+                    "launchurl" => $course["xapiActivityId"],
+                    "introeditor" => ["text" => $course["summary"], "format" => 1],
+                    "showdescription" => 0,
+                    "urltype" => "tincan", // Harcoded as of now, later.
+                    // It can be 'link' or 'tincan' depending upon feature enhancement from Percipio.
+                    "additionalinfo" => json_encode($course["additionalMetadata"]),
+                    "percipiotype" => $course['percipiotype'],
+                    "displaylabel" => $course['displaylabel'],
+                    "gradecat" => 9,
+                    "visible" => 1,
+                    "visibleoncoursepage" => 1,
+                    "grade" => 100,
+                    "groupmode" => 0,
+                    "groupingid" => 0,
+                    "cmidnumber" => '',
+                    "availabilityconditionsjson" => '{"op":"&","c":[],"showc":[]}',
+                    "completionunlocked" => 1,
+                    "completion" => 2,
+                    "completionusegrade" => 1,
+                    "completionexpected" => 0,
+                    "tags" => [],
+                    "course" => $course['id'],
+                    "coursemodule" => !$checkexistingcourse ? 0 : $getpercipioentry->cmid,
+                    "section" => 0,
+                    "module" => $percipiomodule->id,
+                    "modulename" => $course["courseformatoptions"][0]["value"],
+                    "instance" => !$checkexistingcourse ? 0 : $cm->instance,
+                    "add" => !$checkexistingcourse ? $course["courseformatoptions"][0]["value"] : 0,
+                    "update" => !$checkexistingcourse ? 0 : $getpercipioentry->cmid,
+                    "return" => 0,
+                    "sr" => 0,
+                    "competencies" => [],
+                    "competency_rule" => 0,
+                ];
+            }
+            else if($course["percipiotype"] == 'COMPLIANCE' && $course['aicclaunch'] != ''){
+            
+                $mformclassname = 'mod_scorm_mod_form';
+    
+                $fromform = [
+                    "name" => $course['fullname'],
+                    "introeditor" => ["text" => $course["summary"], "format" => 1],
+                    "mform_isexpanded_id_packagehdr" => 1,
+                    "scormtype" => 'aiccurl',
+                    "packageurl" => $course["aicclaunch"],
+                    "reference" => $course["aicclaunch"],
+                    "updatefreq" => 0,
+                    "popup" => 0,
+                    "width" => 100,
+                    "height" => 500,
+                    "displayactivityname" => 1,
+                    "skipview" => 0,
+                    "hidebrowse" => 1,
+                    "displaycoursestructure" => 0,
+                    "displayattemptstatus" => 1,
+                    "timeopen" => 0,
+                    "timeclose" => 0,
+                    "grademethod" => 1,
+                    "maxgrade" => 100,
+                    "maxattempt" => 0,
+                    "whatgrade" => 1,
+                    "forcenewattempt" => 0,
+                    "lastattemptlock" => 0,
+                    "forcecompleted" => 0,
+                    "auto" => 0,
+                    "autocommit" => 0,
+                    "masteryoverride" => 1 ,
+                    "datadir" => 6 ,
+                    "pkgtype" => 'aicc',
+                    "launch" => 0,
+                    "visible" => 1,
+                    "visibleoncoursepage" => 1,
+                    "groupmode" => 0,
+                    "groupingid" => 0,
+                    "cmidnumber" => '',
+                    "availabilityconditionsjson" => '{"op":"&","c":[],"showc":[]}',
+                    "completionunlocked" => 1,
+                    "completion" => 1,
+                    "completionscorerequired" => '',
+                    "completionexpected" => 0,
+                    "tags" => [],
+                    "course" => $course['id'],
+                    "coursemodule" => !$checkexistingcourse ? 0 : $getpercipioentry->cmid,
+                    "section" => 0,
+                    "module" => $percipiomodule->id,
+                    "modulename" => $course["courseformatoptions"][0]["value"],
+                    "instance" => !$checkexistingcourse ? 0 : $cm->instance,
+                    "add" => !$checkexistingcourse ? $course["courseformatoptions"][0]["value"] : 0,
+                    "update" => !$checkexistingcourse ? 0 : $getpercipioentry->cmid,
+                    "return" => 0,
+                    "sr" => 0,
+                    "competencies" => [],
+                    "competency_rule" => 0,
+                ];
+            }
+
             $transaction = $DB->start_delegated_transaction();
             if (!$checkexistingcourse) {
+               
                 // Additional check to delete any redundant/existing percipio course entry.
                 // From {percipio_entries} when moodle course does not exists.
                 $DB->delete_records('percipio_entries', array('percipioid' => $course['shortname']));
 
                 // Create a course.
-                $course['id'] = create_course((object) $course)->id;
-                $msg = get_string('coursecreated', 'mod_percipio');
-
-                $fromform = [
-                    "name" => $course['fullname'],
-                    "launchurl" => $course["xapiActivityId"],
-                    "introeditor" => ["text" => $course["summary"], "format" => 1],
-                    "showdescription" => 0,
-                    "urltype" => "tincan", // Harcoded as of now, later.
-                    // It can be 'link' or 'tincan' depending upon feature enhancement from Percipio.
-                    "additionalinfo" => json_encode($course["additionalMetadata"]),
-                    "percipiotype" => $course['percipiotype'],
-                    "displaylabel" => $course['displaylabel'],
-                    "gradecat" => 9,
-                    "visible" => 1,
-                    "visibleoncoursepage" => 1,
-                    "grade" => 100,
-                    "groupmode" => 0,
-                    "groupingid" => 0,
-                    "cmidnumber" => '',
-                    "availabilityconditionsjson" => '{"op":"&","c":[],"showc":[]}',
-                    "completionunlocked" => 1,
-                    "completion" => 2,
-                    "completionusegrade" => 1,
-                    "completionexpected" => 0,
-                    "tags" => [],
-                    "course" => $course['id'],
-                    "coursemodule" => 0,
-                    "section" => 0,
-                    "module" => $percipiomodule->id,
-                    "modulename" => $course["courseformatoptions"][0]["value"],
-                    "instance" => 0,
-                    "add" => $course["courseformatoptions"][0]["value"],
-                    "update" => 0,
-                    "return" => 0,
-                    "sr" => 0,
-                    "competencies" => [],
-                    "competency_rule" => 0,
-                ];
-
+                // $course['id'] = create_course((object) $course)->id;
+                $course['id'] = custom_create_course((object) $course)->id; // Using custom percipio create course function
+                $msg = get_string('coursecreated', 'mod_percipio'); 
+               
                 $mform = new $mformclassname((object)$fromform, 0, null, (object)$course);
+              
                 $addmodule = add_moduleinfo((object)$fromform, (object)$course, $mform);
 
+                // Upload image from url in course overviewfiles.
+                $coursecontext = context_course::instance($course['id'], MUST_EXIST);
+                $fs = get_file_storage();
+                $overviewfilesoptions = course_overviewfiles_options($course['id']);
+
+                $filetypesutil = new \core_form\filetypes_util();
+                $whitelist = $filetypesutil->normalize_file_types($overviewfilesoptions['accepted_types']);
+
+                $url = $CFG->wwwroot.'/mod/percipio/pix/percipiologo.png';
+                $url = new moodle_url($url);
+                $filename = pathinfo($url->get_path(), PATHINFO_BASENAME);
+
+                if ($filetypesutil->is_allowed_file_type($filename, $whitelist)) {
+                    $checkexistingimage = $fs->get_file($coursecontext->id, 'course', 'overviewfiles', 0, '/', $filename);
+                    if (!$checkexistingimage || ($checkexistingimage->get_filename() != $filename)) {
+                        $fileinfo = [
+                            'filename' => $filename,
+                            'filepath' => '/',
+                            'itemid' => 0,
+                            'contextid' => $coursecontext->id,
+                            'component' => 'course',
+                            'filearea' => 'overviewfiles',
+                        ];
+                        $urlparams = [
+                            'calctimeout' => false,
+                            'timeout' => 5,
+                            'skipcertverify' => true,
+                            'connecttimeout' => 5,
+                        ];
+                        $fs->delete_area_files($coursecontext->id, 'course', 'overviewfiles');
+                        $fs->create_file_from_url($fileinfo, $url, $urlparams);
+                    }
+                }
+                
                 $record = new stdClass();
                 $record->courseid = $course['id'];
                 $record->percipioid = $course['shortname'];
                 $record->cmid = $addmodule->coursemodule;
+                $record->imageurl = $course['imageurl'];
                 $record->timemodified = time();
                 $DB->insert_record('percipio_entries', $record);
 
                 $enableself = true;
             } else {
+
+                
+            
                 // Additional check to delete any redundant/existing course entry.
                 // From {percipio_entries} when moodle course does not exists.
                 $delparams = ['percipioid' => $course['shortname'], 'courseid' => $course['id']];
+              
                 $DB->delete_records_select('percipio_entries', "percipioid = :percipioid AND courseid != :courseid", $delparams);
 
+               
                 // Update course if user has all required capabilities.
                 update_course((object) $course);
+
                 $msg = get_string('courseupdated', 'mod_percipio');
 
                 $getpercipioentry = $DB->get_record('percipio_entries', array('courseid' => $course['id']));
                 $cm = get_coursemodule_from_id('', $getpercipioentry->cmid, 0, false, MUST_EXIST);
 
-                $fromform = [
-                    "name" => $course['fullname'],
-                    "launchurl" => $course["xapiActivityId"],
-                    "introeditor" => ["text" => $course["summary"], "format" => 1],
-                    "showdescription" => 0,
-                    "urltype" => "tincan", // Harcoded as of now, later.
-                    // It can be 'link' or 'tincan' depending upon feature enhancement from Percipio.
-                    "additionalinfo" => json_encode($course["additionalMetadata"]),
-                    "percipiotype" => $course['percipiotype'],
-                    "displaylabel" => $course['displaylabel'],
-                    "gradecat" => 9,
-                    "visible" => 1,
-                    "visibleoncoursepage" => 1,
-                    "grade" => 100,
-                    "groupmode" => 0,
-                    "groupingid" => 0,
-                    "cmidnumber" => '',
-                    "availabilityconditionsjson" => '{"op":"&","c":[],"showc":[]}',
-                    "completionunlocked" => 1,
-                    "completion" => 2,
-                    "completionusegrade" => 1,
-                    "completionexpected" => 0,
-                    "tags" => [],
-                    "course" => $course['id'],
-                    "coursemodule" => $getpercipioentry->cmid,
-                    "section" => 0,
-                    "module" => $percipiomodule->id,
-                    "modulename" => $course["courseformatoptions"][0]["value"],
-                    "instance" => $cm->instance,
-                    "add" => 0,
-                    "update" => $getpercipioentry->cmid,
-                    "return" => 0,
-                    "sr" => 0,
-                    "competencies" => [],
-                    "competency_rule" => 0,
-                ];
-
                 $mform = new $mformclassname((object)$fromform, 0, null, (object)$course);
+                
                 update_moduleinfo($cm, (object)$fromform, (object)$course, $mform);
+               
                 if ($getpercipioentry) {
                     $record = new stdClass();
                     $record->id = $getpercipioentry->id;
                     $record->percipioid = $course['shortname'];
+                    $record->imageurl = $course['imageurl'];
+                    $record->imageuploaded = 0;
                     $record->timemodified = time();
                     $DB->update_record('percipio_entries', $record);
                 }
             }
 
-            // Upload image from url in course overviewfiles.
             $coursecontext = context_course::instance($course['id'], MUST_EXIST);
-            $fs = get_file_storage();
-            $overviewfilesoptions = course_overviewfiles_options($course['id']);
-
-            $filetypesutil = new \core_form\filetypes_util();
-            $whitelist = $filetypesutil->normalize_file_types($overviewfilesoptions['accepted_types']);
-
-            $url = new moodle_url($course['imageurl']);
-            $filename = pathinfo($url->get_path(), PATHINFO_BASENAME);
-
-            if ($filetypesutil->is_allowed_file_type($filename, $whitelist)) {
-                $checkexistingimage = $fs->get_file($coursecontext->id, 'course', 'overviewfiles', 0, '/', $filename);
-                if (!$checkexistingimage || ($checkexistingimage->get_filename() != $filename)) {
-                    $fileinfo = [
-                        'filename' => $filename,
-                        'filepath' => '/',
-                        'itemid' => 0,
-                        'contextid' => $coursecontext->id,
-                        'component' => 'course',
-                        'filearea' => 'overviewfiles',
-                    ];
-                    $urlparams = [
-                        'calctimeout' => false,
-                        'timeout' => 5,
-                        'skipcertverify' => true,
-                        'connecttimeout' => 5,
-                    ];
-                    $fs->delete_area_files($coursecontext->id, 'course', 'overviewfiles');
-                    $fs->create_file_from_url($fileinfo, $url, $urlparams);
-                }
-            }
 
             // Enable self enrolment in the newly created course.
             if ($enableself) {
@@ -426,19 +452,19 @@ class mod_percipio_api_external extends external_api {
             // Delete the duplicate blank category which gets created initially.
             // During the first 5 parallel API requrest from Percipio.
             // This will occur only first time when a category does not exits.
-            $getduplicateemptycategory = $DB->get_records('course_categories', array('name' => $paramcatname, 'coursecount' => 0));
-            foreach ($getduplicateemptycategory as $categorykey => $categoryval) {
-                $deletecat = core_course_category::get($categoryval->id, MUST_EXIST);
-                $catcontext = context_coursecat::instance($deletecat->id);
-                require_capability('moodle/category:manage', $catcontext);
-                self::validate_context($catcontext);
-                self::validate_context(get_category_or_system_context($deletecat->parent));
-                if ($deletecat->can_delete_full()) {
-                    $deletecat->delete_full(false);
-                } else {
-                    throw new moodle_exception('youcannotdeletecategory', '', '', $deletecat->get_formatted_name());
-                }
-            }
+            // $getduplicateemptycategory = $DB->get_records('course_categories', array('name' => $paramcatname, 'coursecount' => 0));
+            // foreach ($getduplicateemptycategory as $categorykey => $categoryval) {
+            //     $deletecat = core_course_category::get($categoryval->id, MUST_EXIST);
+            //     $catcontext = context_coursecat::instance($deletecat->id);
+            //     require_capability('moodle/category:manage', $catcontext);
+            //     self::validate_context($catcontext);
+            //     self::validate_context(get_category_or_system_context($deletecat->parent));
+            //     if ($deletecat->can_delete_full()) {
+            //         $deletecat->delete_full(false);
+            //     } else {
+            //         throw new moodle_exception('youcannotdeletecategory', '', '', $deletecat->get_formatted_name());
+            //     }
+            // }
 
             $transaction->allow_commit();
             $resultcourses = array('moodlecourseid' => $course['id'], 'percipioid' => $course['shortname'],
@@ -662,4 +688,142 @@ class mod_percipio_api_external extends external_api {
             )
         );
     }
+
+    /**
+     * Describes the parameters for percipio_image_upload_parameters.
+     *
+     * @return external_function_parameters
+     */
+    public static function percipio_upload_image_parameters() {
+        return new external_function_parameters(
+            array('data' => new external_value(PARAM_RAW, get_string('courseimageparam', 'mod_percipio')))
+        );
+    }
+
+    /**
+     * Image upload w.r.t to Moodle course from Percipio
+     *
+     * @param JSON $params
+     * @return array (message and code)
+     */
+    public static function percipio_upload_image($coursedata) {
+        global  $CFG, $DB;
+        require_once($CFG->dirroot . "/course/lib.php");
+        require_once($CFG->libdir . '/completionlib.php');
+        require_once($CFG->libdir."/filelib.php");
+        require_once($CFG->dirroot . '/course/modlib.php');
+        require_once($CFG->dirroot . '/mod/percipio/mod_form.php');
+
+        $params = self::validate_parameters(self::percipio_upload_image_parameters(), array('data' => $coursedata));
+        // $json = json_decode($params["data"], true);
+
+        // Get previously failed image upload content uuid and merge with received $json data
+        $getpreviouslyfailedimages = $DB->get_records('percipio_entries', array('imageuploaded' => 0));
+
+        try {
+            foreach ($getpreviouslyfailedimages as $data) {
+                $imagedownloaderror = false;
+                if (empty($data)) {
+                    throw new moodle_exception('errorinvalidparam', 'webservice', '', 'shortname');
+                } 
+
+
+                // $getcourse = $DB->get_record('percipio_entries', array('percipioid' => $data));
+
+                
+                    // Upload image from url in course overviewfiles.
+                $coursecontext = context_course::instance($data->courseid, MUST_EXIST);
+                $fs = get_file_storage();
+                $overviewfilesoptions = course_overviewfiles_options($data->courseid);
+
+                $filetypesutil = new \core_form\filetypes_util();
+                $whitelist = $filetypesutil->normalize_file_types($overviewfilesoptions['accepted_types']);
+
+                $url = new moodle_url($data->imageurl);
+                $filename = pathinfo($url->get_path(), PATHINFO_BASENAME);
+
+                if ($filetypesutil->is_allowed_file_type($filename, $whitelist)) {
+                    $checkexistingimage = $fs->get_file($coursecontext->id, 'course', 'overviewfiles', 0, '/', $filename);
+                    if (!$checkexistingimage || ($checkexistingimage->get_filename() != $filename)) {
+                        $fileinfo = [
+                            'filename' => $filename,
+                            'filepath' => '/',
+                            'itemid' => 0,
+                            'contextid' => $coursecontext->id,
+                            'component' => 'course',
+                            'filearea' => 'overviewfiles',
+                        ];
+                        $urlparams = [
+                            'calctimeout' => false,
+                            'timeout' => 5,
+                            'skipcertverify' => true,
+                            'connecttimeout' => 5,
+                        ];
+                        
+                        try {
+                            $fs->delete_area_files($coursecontext->id, 'course', 'overviewfiles');
+                            $fs->create_file_from_url($fileinfo, $url, $urlparams);
+                        } catch (Exception $err) { 
+                            // Upload percipio image.
+                            $url = $CFG->wwwroot.'/mod/percipio/pix/percipiologo.png';	
+                            $url = new moodle_url($url);	
+                            $filename = pathinfo($url->get_path(), PATHINFO_BASENAME);
+
+                            if ($filetypesutil->is_allowed_file_type($filename, $whitelist)) {	
+                                $checkexistingimage = $fs->get_file($coursecontext->id, 'course', 'overviewfiles', 0, '/', $filename);	
+                                if (!$checkexistingimage || ($checkexistingimage->get_filename() != $filename)) {	
+                                    $fileinfo = [	
+                                        'filename' => $filename,	
+                                        'filepath' => '/',	
+                                        'itemid' => 0,	
+                                        'contextid' => $coursecontext->id,	
+                                        'component' => 'course',	
+                                        'filearea' => 'overviewfiles',	
+                                    ];	
+                                    $urlparams = [	
+                                        'calctimeout' => false,	
+                                        'timeout' => 5,	
+                                        'skipcertverify' => true,	
+                                        'connecttimeout' => 5,	
+                                    ];	
+                                    $fs->delete_area_files($coursecontext->id, 'course', 'overviewfiles');	
+                                    $fs->create_file_from_url($fileinfo, $url, $urlparams);	
+                                }	
+                            }	
+                            $imagedownloaderror = true;
+                        }
+                    }
+                }
+                $imageuploaded = new stdClass();
+                $imageuploaded->id = $data->id;
+                $imageuploaded->imageuploaded = ($imagedownloaderror) ? 0 : 1;
+                $DB->update_record('percipio_entries', $imageuploaded); 
+            }
+
+            $result = array('percipioid' => $data->percipioid,'message' => get_string('success', 'mod_percipio'), 'code' => 200);
+            return $result;
+        } catch (Exception $e) {
+            http_response_code(422);
+        }
+    }
+
+    /**
+     * Describes the percipio_image_upload_returns return value
+     *
+     * @return external_single_structure
+     */
+    public static function percipio_upload_image_returns() {
+
+        return new external_single_structure(
+            array(
+                'percipioid' => new external_value(PARAM_ALPHANUMEXT, get_string('shortname', 'mod_percipio')),
+                'message' => new external_value(PARAM_TEXT, get_string('resmessage', 'mod_percipio')),
+                'code' => new external_value(PARAM_INT, get_string('code', 'mod_percipio')),
+            )
+        );
+
+    }
+    
 }
+
+    
