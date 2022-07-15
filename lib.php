@@ -521,7 +521,7 @@ function percipio_get_oauthtoken() {
  */
 function custom_create_course($data, $editoroptions = null) {
     global $DB, $CFG;
-    // Check the categoryid - must be given for all new courses
+    // Check the categoryid - must be given for all new courses.
     $category = $DB->get_record('course_categories', array('id' => $data->category), '*', MUST_EXIST);
     // Check if the shortname already exists.
     if (!empty($data->shortname)) {
@@ -550,11 +550,11 @@ function custom_create_course($data, $editoroptions = null) {
     $data->timecreated  = !empty($data->timecreated) ? $data->timecreated : time();
     $data->timemodified = $data->timecreated;
 
-    // place at beginning of any category
+    // Place at beginning of any category.
     $data->sortorder = 0;
 
     if ($editoroptions) {
-        // summary text is updated later, we need context to store the files first
+        // Summary text is updated later, we need context to store the files first.
         $data->summary = '';
         $data->summary_format = FORMAT_HTML;
     }
@@ -573,7 +573,7 @@ function custom_create_course($data, $editoroptions = null) {
     }
 
     if (!isset($data->visible)) {
-        // data not from form, add missing visibility info
+        // Data not from form, add missing visibility info.
         $data->visible = $category->visible;
     }
     $data->visibleold = $data->visible;
@@ -582,7 +582,7 @@ function custom_create_course($data, $editoroptions = null) {
     $context = context_course::instance($newcourseid, MUST_EXIST);
 
     if ($editoroptions) {
-        // Save the files used in the summary editor and store
+        // Save the files used in the summary editor and store.
         $data = file_postupdate_standard_editor($data, 'summary', $editoroptions, $context, 'course', 'summary', 0);
         $DB->set_field('course', 'summary', $data->summary, array('id' => $newcourseid));
         $DB->set_field('course', 'summaryformat', $data->summary_format, array('id' => $newcourseid));
@@ -592,13 +592,12 @@ function custom_create_course($data, $editoroptions = null) {
         $data = file_postupdate_standard_filemanager($data, 'overviewfiles', $overviewfilesoptions, $context, 'course', 'overviewfiles', 0);
     }
 
-    // update course format options
+    // Update course format options.
     course_get_format($newcourseid)->update_course_format_options($data);
 
     $course = course_get_format($newcourseid)->get_course();
 
-    // fix_course_sortorder();
-    // purge appropriate caches in case fix_course_sortorder() did not change anything
+    // Purge appropriate caches in case fix_course_sortorder() did not change anything.
     cache_helper::purge_by_event('changesincourse');
 
     // Trigger a course created event.
@@ -611,7 +610,7 @@ function custom_create_course($data, $editoroptions = null) {
 
     $event->trigger();
 
-    // Setup the blocks
+    // Setup the blocks.
     blocks_add_default_course_blocks($course);
 
     // Create default section and initial sections if specified (unless they've already been created earlier).
@@ -626,7 +625,7 @@ function custom_create_course($data, $editoroptions = null) {
     // Save any custom role names.
     save_local_role_names($course->id, (array)$data);
 
-    // set up enrolments
+    // Set up enrolments.
     enrol_course_updated(true, $course, $data);
 
     // Update course tags.

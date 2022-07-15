@@ -667,9 +667,8 @@ class mod_percipio_api_external extends external_api {
         require_once($CFG->dirroot . '/mod/percipio/mod_form.php');
 
         $params = self::validate_parameters(self::percipio_upload_image_parameters(), array('data' => $coursedata));
-        // $json = json_decode($params["data"], true);
 
-        // Get previously failed image upload content uuid and merge with received $json data
+        // Get previously failed image upload content uuid and merge with received $json data.
         $getpreviouslyfailedimages = $DB->get_records('percipio_entries', array('imageuploaded' => 0));
 
         try {
@@ -678,7 +677,6 @@ class mod_percipio_api_external extends external_api {
                 if (empty($data)) {
                     throw new moodle_exception('errorinvalidparam', 'webservice', '', 'shortname');
                 }
-                // $getcourse = $DB->get_record('percipio_entries', array('percipioid' => $data));
                 // Upload image from url in course overviewfiles.
                 $coursecontext = context_course::instance($data->courseid, MUST_EXIST);
                 $fs = get_file_storage();
