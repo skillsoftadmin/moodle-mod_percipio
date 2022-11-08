@@ -1,0 +1,65 @@
+
+<div id="target">
+
+	<div id="template">  
+    <ion-header [translucent]="true">
+    <ion-toolbar color="primary">
+      <ion-title>
+        Report
+      </ion-title>
+    </ion-toolbar>
+  </ion-header>
+  
+  <ion-content [fullscreen]="true">
+    <div style="overflow-x:auto;">
+      <table style="border-collapse: collapse;
+    width: 100%;
+    border: 1px solid #ddd;" class="table table-striped">
+          <thead style="text-align: left;
+    padding: 8px;">
+              <th style="text-align: left;
+              padding: 16px;">Name</th>
+              <th style="text-align: left;
+              padding: 16px;">Email</th>
+              <th style="text-align: left;
+              padding: 16px;">First Accessed</th>
+              <th style="text-align: left;
+              padding: 16px;">Last Accessed</th>
+               <th style="text-align: left;
+               padding: 16px;">Completion Time</th>
+                <th style="text-align: left;
+                padding: 16px;">Total Duration</th>
+                 <th style="text-align: left;
+                 padding: 16px;">Score</th>
+                  <th style="text-align: left;
+                  padding: 16px;">Status</th>
+          </thead>
+          <tbody>
+            {{#report}}
+                  <tr>
+                      <td style="text-align: left;
+                      padding: 16px;">{{name}}</td>
+                      <td style="text-align: left;
+                      padding: 16px;">{{email}}</td>
+                      <td style="text-align: left;
+                      padding: 16px;">{{firstaccessed}}</td>
+                       <td style="text-align: left;
+                       padding: 16px;">{{lastaccessed}}</td>
+                        <td style="text-align: left;
+                        padding: 16px;">{{completiontime}}</td>
+                         <td style="text-align: left;
+                         padding: 16px;">{{totalduration}}</td>
+                          <td style="text-align: left;
+                          padding: 16px;">{{score}}</td>
+                           <td style="text-align: left;
+                           padding: 16px;">{{status}}</td>
+                  </tr>
+                  {{/report}}
+          
+          </tbody>
+      </table>
+  </div>
+  </ion-content>
+  </div>
+
+</div>
