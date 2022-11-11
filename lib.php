@@ -156,7 +156,7 @@ function percipio_scale_used($moduleinstanceid, $scaleid) {
 function percipio_scale_used_anywhere($scaleid) {
     global $DB;
 
-    if ($scaleid and $DB->record_exists('percipio', array('grade' => $scaleid))) {
+    if ($scaleid && $DB->record_exists('percipio', array('grade' => $scaleid))) {
         return true;
     } else {
         return false;
@@ -439,7 +439,6 @@ function percipio_get_launchurl($activityurl) {
 function percipio_get_launchurl_block($activityurl) {
 
     global $USER, $CFG;
-  
     $contenttoken = '';
     $errormsg = false;
     $bearertoken = get_config('percipio', 'bearertoken');
@@ -447,9 +446,7 @@ function percipio_get_launchurl_block($activityurl) {
     $activityid = $activityurl.$orgid;
     $redirecturl = get_config('percipio', 'percipiourl');
     $actor = '{"objectType":"Agent","account":{"homePage":"' . $CFG->wwwroot . '","name":"' . $USER->id . '"}}';
-  
-        $contenttoken = percipio_get_contenttoken($bearertoken, $activityid);
-    
+    $contenttoken = percipio_get_contenttoken($bearertoken, $activityid);
     if (!$errormsg) {
         $launchurl = $redirecturl . '/content-integration/v1/tincan/launch?actor='.
             $actor . '&activity_id=' . $activityid . '&content_token=' . $contenttoken;
@@ -551,16 +548,15 @@ function percipio_get_oauthtoken() {
 
 
 /**
- * Create a percipio course and either return a $course object
+ * Fucntion to create a percipio course and either return a $course object
  *
  * Please note this functions does not verify any access control,
  * the calling code is responsible for all validation (usually it is the form definition).
  *
- * @param array $editoroptions course description editor options
  * @param object $data  - all the data needed for an entry in the 'course' table
+ * @param array $editoroptions course description editor options
  * @return object new course instance
  */
-
 function custom_create_course($data, $editoroptions = null) {
     global $DB, $CFG;
 

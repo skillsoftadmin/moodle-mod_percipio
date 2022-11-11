@@ -31,7 +31,13 @@ defined('MOODLE_INTERNAL') || die;
 
 use context_module;
 use html_writer;
-
+/**
+ * Percipio mobile class
+ *
+ * @package    mod_percipio
+ * @copyright  2022 Skillsoft Ireland Limited - All rights reserved.
+ * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
+ */
 class mobile {
     /**
      * Returns the percipio course view for the mobile app.
