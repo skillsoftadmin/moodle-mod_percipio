@@ -111,12 +111,3 @@ $string['privacy:metadata:percipio:userid'] = 'Userid passed from moodle to perc
 $string['piiinfo'] = 'Send PII information to percipio';
 $string['pii_yes'] = 'Yes';
 $string['pii_no'] = 'No';
-$string['publisheddate'] = 'Published date';
-$string['area'] = 'Area';
-$string['duration'] = 'Duration';
-$string['expertiselevel'] = 'Expertise Level';
-$string['modality'] = 'Modality';
-$string['subject'] = 'Subject';
-
-
-

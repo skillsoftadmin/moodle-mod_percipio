@@ -321,8 +321,7 @@ class mod_percipio_api_external extends external_api {
                 // From {percipio_entries} when moodle course does not exists.
                 $DB->delete_records('percipio_entries', array('percipioid' => $course['shortname']));
                 // Create a course.
-                // Using custom percipio create course function.
-                $course['id'] = custom_create_course((object) $course)->id;
+                $course['id'] = custom_create_course((object) $course)->id; // Using custom percipio create course function
                 $msg = get_string('coursecreated', 'mod_percipio');
                 $mform = new $mformclassname((object)$fromform, 0, null, (object)$course);
                 $addmodule = add_moduleinfo((object)$fromform, (object)$course, $mform);
@@ -716,8 +715,7 @@ class mod_percipio_api_external extends external_api {
                             $filename = pathinfo($url->get_path(), PATHINFO_BASENAME);
 
                             if ($filetypesutil->is_allowed_file_type($filename, $whitelist)) {
-                                $checkexistingimage = $fs->get_file($coursecontext->id, 'course', 'overviewfiles', 0,
-                                '/', $filename);
+                                $checkexistingimage = $fs->get_file($coursecontext->id, 'course', 'overviewfiles', 0, '/', $filename);
                                 if (!$checkexistingimage || ($checkexistingimage->get_filename() != $filename)) {
                                     $fileinfo = [
                                         'filename' => $filename,

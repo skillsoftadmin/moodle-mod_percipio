@@ -156,7 +156,7 @@ function percipio_scale_used($moduleinstanceid, $scaleid) {
 function percipio_scale_used_anywhere($scaleid) {
     global $DB;
 
-    if ($scaleid && $DB->record_exists('percipio', array('grade' => $scaleid))) {
+    if ($scaleid and $DB->record_exists('percipio', array('grade' => $scaleid))) {
         return true;
     } else {
         return false;
@@ -321,18 +321,6 @@ function percipio_reset_gradebook($courseid, $type = '') {
 }
 
 /**
- * return course global
- *
- */
-function percipio_get_course() {
-    global $COURSE;
-
-    $course = $COURSE;
-
-    return $course;
-}
-
-/**
  * Actual implementation of the reset course functionality, delete all the
  * percipio attempts for course $data->courseid, if $data->reset_percipio_attempts is
  * set and true.
@@ -393,7 +381,7 @@ function percipio_get_course_image() {
 }
 
 /**
- * Function to generate the Tin Can launch URL
+ * Fucntion to generate the Tin Can launch URL
  *
  * @param string $activityurl the Tin Can launch URL of this activity to be appended.
  * @return the launch url.
@@ -424,32 +412,6 @@ function percipio_get_launchurl($activityurl) {
     if (!$errormsg) {
         $launchurl = $redirecturl . '/content-integration/v1/tincan/launch?actor='.
             $actor . '&activity_id=' . $activityurl . '&content_token=' . $contenttoken;
-        return $launchurl;
-    } else {
-        return false;
-    }
-}
-
-/**
- * Function to generate the Tin Can launch URL For Block plugin
- *
- * @param string $activityurl the Tin Can launch URL of this activity to be appended.
- * @return the launch url.
- */
-function percipio_get_launchurl_block($activityurl) {
-
-    global $USER, $CFG;
-    $contenttoken = '';
-    $errormsg = false;
-    $bearertoken = get_config('percipio', 'bearertoken');
-    $orgid = get_config('percipio', 'organizationid');
-    $activityid = $activityurl.$orgid;
-    $redirecturl = get_config('percipio', 'percipiourl');
-    $actor = '{"objectType":"Agent","account":{"homePage":"' . $CFG->wwwroot . '","name":"' . $USER->id . '"}}';
-    $contenttoken = percipio_get_contenttoken($bearertoken, $activityid);
-    if (!$errormsg) {
-        $launchurl = $redirecturl . '/content-integration/v1/tincan/launch?actor='.
-            $actor . '&activity_id=' . $activityid . '&content_token=' . $contenttoken;
         return $launchurl;
     } else {
         return false;
@@ -548,21 +510,19 @@ function percipio_get_oauthtoken() {
 
 
 /**
- * Fucntion to create a percipio course and either return a $course object
+ * Create a percipio course and either return a $course object
  *
  * Please note this functions does not verify any access control,
  * the calling code is responsible for all validation (usually it is the form definition).
- *
  * @param object $data  - all the data needed for an entry in the 'course' table
  * @param array $editoroptions course description editor options
- * @return object new course instance
+ * @return the course instance
+ *
  */
 function custom_create_course($data, $editoroptions = null) {
     global $DB, $CFG;
-
     // Check the categoryid - must be given for all new courses.
     $category = $DB->get_record('course_categories', array('id' => $data->category), '*', MUST_EXIST);
-
     // Check if the shortname already exists.
     if (!empty($data->shortname)) {
         if ($DB->record_exists('course', array('shortname' => $data->shortname))) {
@@ -628,9 +588,8 @@ function custom_create_course($data, $editoroptions = null) {
         $DB->set_field('course', 'summaryformat', $data->summary_format, array('id' => $newcourseid));
     }
     if ($overviewfilesoptions = course_overviewfiles_options($newcourseid)) {
-        // Save the course overviewfiles.
-        $data = file_postupdate_standard_filemanager($data, 'overviewfiles', $overviewfilesoptions, $context, 'course',
-        'overviewfiles', 0);
+        // Save the course overviewfiles
+        $data = file_postupdate_standard_filemanager($data, 'overviewfiles', $overviewfilesoptions, $context, 'course', 'overviewfiles', 0);
     }
 
     // Update course format options.
@@ -638,7 +597,6 @@ function custom_create_course($data, $editoroptions = null) {
 
     $course = course_get_format($newcourseid)->get_course();
 
-    // Fix_course_sortorder().
     // Purge appropriate caches in case fix_course_sortorder() did not change anything.
     cache_helper::purge_by_event('changesincourse');
 

@@ -80,7 +80,7 @@ foreach ($percipios as $percipio) {
         $reportlink = html_writer::link(
             new moodle_url('/mod/percipio/view.php', array('id' => $percipio->coursemodule, 'tab' => 'report')), 'View');
     }
-    if ($course->format == 'weeks' || $course->format == 'topics') {
+    if ($course->format == 'weeks' or $course->format == 'topics') {
         $table->data[] = array($percipio->section, $link, $reportlink);
     } else {
         $table->data[] = array($link, $reportlink);
