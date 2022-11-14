@@ -446,7 +446,20 @@ function percipio_get_launchurl_block($activityurl) {
     $activityid = $activityurl.$orgid;
     $redirecturl = get_config('percipio', 'percipiourl');
     $actor = '{"objectType":"Agent","account":{"homePage":"' . $CFG->wwwroot . '","name":"' . $USER->id . '"}}';
-    $contenttoken = percipio_get_contenttoken($bearertoken, $activityid);
+    $authenticationmethod = get_config('percipio', 'authenticationmethod');
+    if ($authenticationmethod == 'oauth') {
+        $oauthtoken = get_config('percipio', 'oauthToken');
+        $tokenexpirytime = get_config('percipio', 'tokenExpiryTime');
+        if (($oauthtoken != '') && (time() < $tokenexpirytime)) {
+            $contenttoken = percipio_get_contenttoken($oauthtoken, $activityid);
+        } else {
+            $resp = percipio_get_oauthtoken();
+            $oauthtoken = get_config('percipio', 'oauthToken');
+            $contenttoken = percipio_get_contenttoken($oauthtoken, $activityid);
+        }
+    } else {
+        $contenttoken = percipio_get_contenttoken($bearertoken, $activityid);
+    }
     if (!$errormsg) {
         $launchurl = $redirecturl . '/content-integration/v1/tincan/launch?actor='.
             $actor . '&activity_id=' . $activityid . '&content_token=' . $contenttoken;
