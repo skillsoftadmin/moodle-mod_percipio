@@ -19,9 +19,11 @@
     border-top: 16px solid #3498db;
     width: 120px;
     height: 120px;
-    -webkit-animation: spin 2s linear infinite;        
+    -webkit-animation: spin 2s linear infinite;
     animation: spin 2s linear infinite;
-    position: absolute;top: 50%;left: 45.5%;
+    position: absolute;
+    top: 50%;
+    left: 45.5%;
 
 }
 
