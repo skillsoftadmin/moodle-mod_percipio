@@ -84,43 +84,14 @@ In OAuth, client Id, client secret, and Percipio’s OAuth provider URL are need
 
 ![](pix/report.png)
 
-# Percipio Test Credentials
-
-**Client ID:** b148508f-9b13-4cf4-b229-03ed600fa81b
-
-**Client Secret:** d8d9043e-b77f-4168-9958-2c90b256554b
-
-**Scope:** api
-
-**Organization ID:** 6343265d-d234-4967-abf9-00118f1bb904
-
-**Percipio OAuth URL:** https://oauth2-provider.develop.squads-dev.com
-
-**Bearer Token:** eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJzZXJ2aWNlX2FjY291bnRfaWQiOiI0MTI1YTAyYS00OWZkLTRjZmQtYmQyNS0zOTVhNDQ5ZTUwZmUiLCJvcmdhbml6YXRpb25faWQiOiI2MzQzMjY1ZC1kMjM0LTQ5NjctYWJmOS0wMDExOGYxYmI5MDQiLCJpc3MiOiJhcGkucGVyY2lwaW8uY29tIiwiaWF0IjoxNjQ2OTEwMDg3LCJzdWIiOiJkYTQxODE2YTZhNzZhY2ZmMzQ0ZmFkNDkxMmU0MzM1NjY4NGNkZWNkIiwicG9saWN5LWlkIjoiZGV2LXBlcmNpcGlvLWFwaS1zdGFuZGFyZC1wb2xpY3kifQ.kuUqvGn0U4SCqls8WfbHBVtU1AqiE836xHrgjwohtnq9n2YFAjMj2Eiglngb59zudA39bt5PLjBa2HVdJ3SnVY_YlRZnTAJi_Jp_i6A_A8GErrchT8bt0cRbl4suqQ6SCFwUN2YYjqD4C1nI2mnm5bLgvdnbIhJoDFoa6eKMkOpLcMtThr5nL5R6rVG9Ume7CDDAoOyVgxjNZ7sExz9MTvEL18Z109naMunymcL6JHY6V_xROdWVMDHSirabq82GwEnjChBV4HB_NEdCxz_K8nVnk6qNt3IeIQ_4dJiZBApuBmOePqI3grSYlTLpBd8MVJRzaMbzTIqhDEhyvzjPNDNxZPs12o5fgNHVznQZYCHzrfAtKWsahMx5IojM6LFHTT7eugqRtfwnmqjgTnY2NOCmcKhR4dzOpMqzdi16SvuxLgBgi3u6hg06vkX1pO5L8wIF-0GHe7QrYsAwVU5H4z4RJmWWgsqJByctClhu22dmxsCWv6QnRNYKwnxwBg5878EUS5MgjKXoTDaamoTlMsyb_JMMXqkwrVwUT9kw0gmS2eyQkvJ64SjknfNt0B6PiAtjT23S8MywDf90Abvay9kYNS9ez0CtFAko3pUGZxFCc7XP3vInD4Yr767excm_8Kv7PxPOtDLD5Nbf2SPiVH2FSmLuqP0Z0oy8hInfrEY
-
-**Percipio API Endpoint URL:** https://api.develop.squads-dev.com
-
-
 # To run Scheduled Jobs in Percipio
 
-Go to- https://moodle-org.front.develop.squads-dev.com/
-
-Login with -
-
-**username - johndoe**
-
-**password - Password@123**
 
 
 Go to Settings -> System Integration -> Scheduled Jobs -> Manage Jobs ->click on 3 dots in front of Moodle Content Export Job -> click Run Now
 
 The schedule will run and it will export the content from Percipio and it will get imported into this Moodle - https://pints-moodle.develop.squads-dev.com via API call. 
 Click on site-home and see the content getting imported in Moodle.
-
-**Moodle URL - https://pints-moodle.develop.squads-dev.com**
-
-**Moodle Login - admin / M00dl3@dm1n7890!**
-
 
 # License
 2022 Skillsoft Ireland Limited - All rights reserved.
