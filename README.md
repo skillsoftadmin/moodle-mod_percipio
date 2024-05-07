@@ -25,6 +25,10 @@ Activity(Mod) Plugin
 # API Details
 One can use the below payload to test the Moodle APIs from Postman.
 
+## Required set of Permissions for content export
+If Moodle admin doesn't want to give full permissions for Percipio plugin to upload Percipio content, they can use webservice-content-export-permissions.xml file which contains only required set of permissions, create a custom role and assign to the user, generate the token and use it for content export.
+[click to download](https://github.com/skillsoftadmin/moodle-mod_percipio/blob/master/webservice-content-export-permissions.xml)
+
 ## Course Import
 **API Endpoint URL:** [your-moodle-url]/webservice/rest/server.php
 **Method:** POST
