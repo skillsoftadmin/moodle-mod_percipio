@@ -219,12 +219,13 @@ class mod_percipio_api_external extends external_api {
         $percipiomodule = $DB->get_record('modules', array('name' => $course["courseformatoptions"][0]["value"]));
         try {
             $getpercipioentry = $DB->get_record('percipio_entries', array('courseid' => $course['id']));
+            $cm = get_coursemodule_from_id('', $getpercipioentry->cmid, $course['id']);
             if ($course["courseformatoptions"][0]["value"] == 'percipio' && $course['link'] != '') {
                 $mformclassname = 'mod_percipio_mod_form';
                 $fromform = [
                     "name" => $course['fullname'],
                     "launchurl" => $course["xapiActivityId"],
-                    "introeditor" => ["text" => $course["summary"], "format" => 1],
+                    "introeditor" => ["itemid" => -1, "text" => $course["summary"], "format" => 1],
                     "showdescription" => 0,
                     "urltype" => "tincan", // Harcoded as of now, later.
                     // It can be 'link' or 'tincan' depending upon feature enhancement from Percipio.
@@ -261,7 +262,7 @@ class mod_percipio_api_external extends external_api {
                 $mformclassname = 'mod_scorm_mod_form';
                 $fromform = [
                     "name" => $course['fullname'],
-                    "introeditor" => ["text" => $course["summary"], "format" => 1],
+                    "introeditor" => ["itemid" => -1, "text" => $course["summary"], "format" => 1],
                     "mform_isexpanded_id_packagehdr" => 1,
                     "scormtype" => 'aiccurl',
                     "packageurl" => $course["aicclaunch"],
@@ -378,7 +379,7 @@ class mod_percipio_api_external extends external_api {
                 $cm = get_coursemodule_from_id('', $getpercipioentry->cmid, 0, false, MUST_EXIST);
 
                 $mform = new $mformclassname((object)$fromform, 0, null, (object)$course);
-                update_moduleinfo($cm, (object)$fromform, (object)$course, $mform);
+                update_moduleinfo($cm, (object)$fromform, get_course($course['id']), $mform);
                 if ($getpercipioentry) {
                     $record = new stdClass();
                     $record->id = $getpercipioentry->id;
