@@ -702,3 +702,18 @@ function custom_create_course($data, $editoroptions = null) {
 
     return $course;
 }
+
+// Log key percipio image upload events (PHP error log).
+function percipio_log_image_upload($message, array $context = [], bool $iserror = true) {
+    global $CFG;
+
+    if (!$iserror && empty($CFG->debugdeveloper)) {
+        return;
+    }
+
+    $entry = '[mod_percipio] ' . $message;
+    if (!empty($context)) {
+        $entry .= ' ' . json_encode($context, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+    }
+    error_log($entry);
+}

@@ -355,7 +355,13 @@ class mod_percipio_api_external extends external_api {
                             'connecttimeout' => 5,
                         ];
                         $fs->delete_area_files($coursecontext->id, 'course', 'overviewfiles');
-                        $fs->create_file_from_url($fileinfo, $url, $urlparams);
+                        try {
+                            $fs->create_file_from_url($fileinfo, $url, $urlparams);
+                        } catch (Exception $e) {
+                            // Fallback to file path if URL fails.
+                            $filepath = $CFG->dirroot.'/mod/percipio/pix/percipiologo.png';
+                            $fs->create_file_from_pathname($fileinfo, $filepath);
+                        }
                     }
                 }
                 $record = new stdClass();
@@ -682,18 +688,33 @@ class mod_percipio_api_external extends external_api {
         require_once($CFG->libdir."/filelib.php");
         require_once($CFG->dirroot . '/course/modlib.php');
         require_once($CFG->dirroot . '/mod/percipio/mod_form.php');
+        require_once($CFG->dirroot . '/mod/percipio/lib.php');
 
         $params = self::validate_parameters(self::percipio_upload_image_parameters(), array('data' => $coursedata));
 
         // Get previously failed image upload content uuid and merge with received $json data.
         $getpreviouslyfailedimages = $DB->get_records('percipio_entries', array('imageuploaded' => 0));
 
+        percipio_log_image_upload('Image upload started', [
+            'pending' => count($getpreviouslyfailedimages),
+        ], false);
+
         try {
+            $lastprocessedpercipioid = null;
+            $lastqueuedpercipioid = null;
             foreach ($getpreviouslyfailedimages as $data) {
+                if (!empty($data->percipioid)) {
+                    $lastqueuedpercipioid = $data->percipioid;
+                }
+                try {
                 $imagedownloaderror = false;
                 if (empty($data)) {
-                    throw new moodle_exception('errorinvalidparam', 'webservice', '', 'shortname');
+                    continue;
                 }
+                if (empty($data->imageurl)) {
+                    continue;
+                }
+
                 // Upload image from url in course overviewfiles.
                 $coursecontext = context_course::instance($data->courseid, MUST_EXIST);
                 $fs = get_file_storage();
@@ -726,12 +747,18 @@ class mod_percipio_api_external extends external_api {
                             $fs->delete_area_files($coursecontext->id, 'course', 'overviewfiles');
                             $fs->create_file_from_url($fileinfo, $url, $urlparams);
                         } catch (Exception $err) {
-                            // Upload percipio image.
-                            $url = $CFG->wwwroot.'/mod/percipio/pix/percipiologo.png';
-                            $url = new moodle_url($url);
-                            $filename = pathinfo($url->get_path(), PATHINFO_BASENAME);
+                            percipio_log_image_upload('Image upload entry failed', [
+                                'entryid' => $data->id,
+                                'courseid' => $data->courseid,
+                                'percipioid' => $data->percipioid,
+                                'imageurl' => $data->imageurl,
+                                'error' => $err->getMessage(),
+                                'fallback' => 'percipiologo.png',
+                            ]);
+                            $filename = 'percipiologo.png';
+                            $filepath = $CFG->dirroot.'/mod/percipio/pix/percipiologo.png';
 
-                            if ($filetypesutil->is_allowed_file_type($filename, $whitelist)) {
+                            if ($filetypesutil->is_allowed_file_type($filename, $whitelist) && file_exists($filepath)) {
                                 $checkexistingimage = $fs->get_file($coursecontext->id, 'course', 'overviewfiles', 0,
                                 '/', $filename);
                                 if (!$checkexistingimage || ($checkexistingimage->get_filename() != $filename)) {
@@ -743,14 +770,8 @@ class mod_percipio_api_external extends external_api {
                                         'component' => 'course',
                                         'filearea' => 'overviewfiles',
                                     ];
-                                    $urlparams = [
-                                        'calctimeout' => false,
-                                        'timeout' => 5,
-                                        'skipcertverify' => true,
-                                        'connecttimeout' => 5,
-                                    ];
                                     $fs->delete_area_files($coursecontext->id, 'course', 'overviewfiles');
-                                    $fs->create_file_from_url($fileinfo, $url, $urlparams);
+                                    $fs->create_file_from_pathname($fileinfo, $filepath);
                                 }
                             }
                             $imagedownloaderror = true;
@@ -761,11 +782,39 @@ class mod_percipio_api_external extends external_api {
                 $imageuploaded->id = $data->id;
                 $imageuploaded->imageuploaded = ($imagedownloaderror) ? 0 : 1;
                 $DB->update_record('percipio_entries', $imageuploaded);
+                $lastprocessedpercipioid = $data->percipioid;
+                } catch (Exception $e) {
+                    percipio_log_image_upload('Image upload entry failed', [
+                        'entryid' => $data->id ?? null,
+                        'courseid' => $data->courseid ?? null,
+                        'percipioid' => $data->percipioid ?? null,
+                        'imageurl' => $data->imageurl ?? null,
+                        'error' => $e->getMessage(),
+                    ]);
+                    continue;
+                }
             }
 
-            $result = array('percipioid' => $data->percipioid, 'message' => get_string('success', 'mod_percipio'), 'code' => 200);
+            $remaining = $DB->count_records('percipio_entries', array('imageuploaded' => 0));
+            $resultpercipioid = $lastprocessedpercipioid ?? $lastqueuedpercipioid;
+            $message = get_string('success', 'mod_percipio');
+            if ($resultpercipioid === null) {
+                $message .= ' (no pending images)';
+            } else if ($remaining > 0) {
+                $message .= ' (' . $remaining . ' remaining)';
+            }
+            percipio_log_image_upload('Image upload completed', [
+                'remaining' => $remaining,
+                'lastprocessedpercipioid' => $lastprocessedpercipioid,
+                'lastqueuedpercipioid' => $lastqueuedpercipioid,
+                'resultpercipioid' => $resultpercipioid,
+            ], false);
+            $result = array('percipioid' => $resultpercipioid, 'message' => $message, 'code' => 200);
             return $result;
         } catch (Exception $e) {
+            percipio_log_image_upload('Image upload failed', [
+                'error' => $e->getMessage(),
+            ]);
             http_response_code(422);
         }
     }
@@ -779,7 +828,11 @@ class mod_percipio_api_external extends external_api {
 
         return new external_single_structure(
             array(
-                'percipioid' => new external_value(PARAM_ALPHANUMEXT, get_string('shortname', 'mod_percipio')),
+                'percipioid' => new external_value(
+                    PARAM_ALPHANUMEXT,
+                    get_string('shortname', 'mod_percipio') . '; null when no pending images were processed',
+                    VALUE_OPTIONAL
+                ),
                 'message' => new external_value(PARAM_TEXT, get_string('resmessage', 'mod_percipio')),
                 'code' => new external_value(PARAM_INT, get_string('code', 'mod_percipio')),
             )
