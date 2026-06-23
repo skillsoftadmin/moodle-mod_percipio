@@ -64,4 +64,16 @@ if ($ADMIN->fulltree) {
         get_string('piiinfo', 'mod_percipio'), '',
         'no', ['yes' => get_string('pii_yes', 'mod_percipio'),
         'no' => get_string('pii_no', 'mod_percipio')] ));
+
+    $settings->add(new admin_setting_configselect('percipio/userlookupmethod',
+        get_string('userlookupmethod', 'mod_percipio'),
+        get_string('userlookupmethod_help', 'mod_percipio'),
+        '', 
+        [
+            '' => get_string('noforceuserlookupmethod', 'mod_percipio'),
+            'id' => get_string('internalid', 'mod_percipio'),
+            'username' => get_string('username'),
+            'email' => get_string('email'),
+            'idnumber' => get_string('idnumber'),
+        ] ));
 }

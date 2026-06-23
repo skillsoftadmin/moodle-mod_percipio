@@ -117,6 +117,12 @@ $string['duration'] = 'Duration';
 $string['expertiselevel'] = 'Expertise Level';
 $string['modality'] = 'Modality';
 $string['subject'] = 'Subject';
-
-
-
+$string['userlookupmethod'] = 'User lookup method';
+$string['userlookupmethod_help'] = 'Select the user lookup method to be used for percipio. By default, the user lookup method is set to "No force user lookup method". This means that the plugin will not force a specific user lookup method and will use the default method set in percipio. The available user lookup methods are:
+    - No force user lookup method: The plugin will not force a specific user lookup method.
+    - Internal id: The plugin will use the internal Moodle user id to look up users in percipio.
+    - Username: The plugin will use the Moodle username to look up users in percipio.
+    - Email: The plugin will use the Moodle email address to look up users in percipio.
+    - Id number: The plugin will use the Moodle id number to look up users in percipio.';
+$string['noforceuserlookupmethod'] = 'No force user lookup method';
+$string['internalid'] = 'Internal id';

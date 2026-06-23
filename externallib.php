@@ -487,22 +487,24 @@ class mod_percipio_api_external extends external_api {
             throw new moodle_exception('error', 'webservice', '', get_string('nocourse', 'mod_percipio'));
         }
 
-        // Checks if userLookupMethod exists in the $trackingdata array
-        if (isset($trackingdata['userLookupMethod'])) {
-            switch ($trackingdata['userLookupMethod']) {
-                case 'username':
-                    $getuser = $DB->get_record('user', array('username' => $trackingdata['username']));
-                    break;
-                case 'email':
-                    $getuser = $DB->get_record('user', array('email' => $trackingdata['username']));
-                    break;
-                default:
-                    // Default fallback to original behavior
-                    $getuser = $DB->get_record('user', array('id' => $trackingdata['username']));
-            }
-        } else {
-            // If userLookupMethod is not set, use the original behavior
-            $getuser = $DB->get_record('user', array('id' => $trackingdata['username']));
+        // Checks if userLookupMethod exists in the $trackingdata array.
+        $userlookupmethod = !empty(get_config('percipio', 'userlookupmethod'))
+            ? get_config('percipio', 'userlookupmethod')
+            : (isset($trackingdata['userLookupMethod']) ? $trackingdata['userLookupMethod'] : 'id');
+
+        switch ($userlookupmethod) {
+            case 'username':
+                $getuser = $DB->get_record('user', ['username' => $trackingdata['username']]);
+                break;
+            case 'email':
+                $getuser = $DB->get_record('user', ['email' => $trackingdata['username']]);
+                break;
+            case 'idnumber':
+                $getuser = $DB->get_record('user', ['idnumber' => $trackingdata['username']]);
+                break;
+            default:
+                // Default fallback to original behavior.
+                $getuser = $DB->get_record('user', ['id' => $trackingdata['username']]);
         }
 
         if (!$getuser) {
