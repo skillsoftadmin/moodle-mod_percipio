@@ -25,7 +25,7 @@
 defined('MOODLE_INTERNAL') || die();
 
 $plugin->component = 'mod_percipio';
-$plugin->release = '1.1';
-$plugin->version = 2026053101;
+$plugin->release = '1.3';
+$plugin->version = 2026071400;
 $plugin->requires = 2018120307;
 $plugin->maturity = MATURITY_STABLE;

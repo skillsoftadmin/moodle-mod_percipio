@@ -218,8 +218,19 @@ class mod_percipio_api_external extends external_api {
         }
         $percipiomodule = $DB->get_record('modules', array('name' => $course["courseformatoptions"][0]["value"]));
         try {
-            $getpercipioentry = $DB->get_record('percipio_entries', array('courseid' => $course['id']));
-            $cm = get_coursemodule_from_id('', $getpercipioentry->cmid, $course['id']);
+            $getpercipioentry = false;
+            $cm = false;
+            if ($checkexistingcourse) {
+                $getpercipioentry = $DB->get_record('percipio_entries', array('courseid' => $course['id']));
+                if ($getpercipioentry && !empty($getpercipioentry->cmid)) {
+                    $cm = get_coursemodule_from_id('', $getpercipioentry->cmid, $course['id'], false, IGNORE_MISSING);
+                }
+            }
+            // UPDATE only when course + tracking row + live course module all exist.
+            $isupdate = ($checkexistingcourse && $getpercipioentry && $cm);
+            // Course exists but Percipio activity/entry was never finished.
+            $isrepair = ($checkexistingcourse && !$isupdate);
+
             if ($course["courseformatoptions"][0]["value"] == 'percipio' && $course['link'] != '') {
                 $mformclassname = 'mod_percipio_mod_form';
                 $fromform = [
@@ -245,14 +256,15 @@ class mod_percipio_api_external extends external_api {
                     "completionusegrade" => 1,
                     "completionexpected" => 0,
                     "tags" => [],
-                    "course" => $course['id'],
-                    "coursemodule" => !$checkexistingcourse ? 0 : $getpercipioentry->cmid,
+                    "course" => $course['id'] ?? 0,
+                    // CREATE and REPAIR use add-activity form fields
+                    "coursemodule" => $isupdate ? $getpercipioentry->cmid : 0,
                     "section" => 0,
                     "module" => $percipiomodule->id,
                     "modulename" => $course["courseformatoptions"][0]["value"],
-                    "instance" => !$checkexistingcourse ? 0 : $cm->instance,
-                    "add" => !$checkexistingcourse ? $course["courseformatoptions"][0]["value"] : 0,
-                    "update" => !$checkexistingcourse ? 0 : $getpercipioentry->cmid,
+                    "instance" => $isupdate ? $cm->instance : 0,
+                    "add" => $isupdate ? 0 : $course["courseformatoptions"][0]["value"],
+                    "update" => $isupdate ? $getpercipioentry->cmid : 0,
                     "return" => 0,
                     "sr" => 0,
                     "competencies" => [],
@@ -302,14 +314,14 @@ class mod_percipio_api_external extends external_api {
                     "completionscorerequired" => '',
                     "completionexpected" => 0,
                     "tags" => [],
-                    "course" => $course['id'],
-                    "coursemodule" => !$checkexistingcourse ? 0 : $getpercipioentry->cmid,
+                    "course" => $course['id'] ?? 0,
+                    "coursemodule" => $isupdate ? $getpercipioentry->cmid : 0,
                     "section" => 0,
                     "module" => $percipiomodule->id,
                     "modulename" => $course["courseformatoptions"][0]["value"],
-                    "instance" => !$checkexistingcourse ? 0 : $cm->instance,
-                    "add" => !$checkexistingcourse ? $course["courseformatoptions"][0]["value"] : 0,
-                    "update" => !$checkexistingcourse ? 0 : $getpercipioentry->cmid,
+                    "instance" => $isupdate ? $cm->instance : 0,
+                    "add" => $isupdate ? 0 : $course["courseformatoptions"][0]["value"],
+                    "update" => $isupdate ? $getpercipioentry->cmid : 0,
                     "return" => 0,
                     "sr" => 0,
                     "competencies" => [],
@@ -325,6 +337,7 @@ class mod_percipio_api_external extends external_api {
                 // Using custom percipio create course function.
                 $course['id'] = custom_create_course((object) $course)->id;
                 $msg = get_string('coursecreated', 'mod_percipio');
+                $fromform['course'] = $course['id'];
                 $mform = new $mformclassname((object)$fromform, 0, null, (object)$course);
                 $addmodule = add_moduleinfo((object)$fromform, (object)$course, $mform);
                 // Upload image from url in course overviewfiles.
@@ -372,12 +385,100 @@ class mod_percipio_api_external extends external_api {
                 $record->timemodified = time();
                 $DB->insert_record('percipio_entries', $record);
                 $enableself = true;
+            } else if ($isrepair) {
+                // Course exists without a valid Percipio activity linkage
+                require_capability('moodle/course:manageactivities', $context);
+                // Only remove entries whose Moodle course no longer exists; never delete live
+                self::cleanup_orphan_percipio_entries($course['shortname'], $course['id']);
+
+                if (!isset($course['sortorder']) || $course['sortorder'] === null) {
+                    unset($course['sortorder']);
+                }
+                percipio_log_import_debug('percipio_import_course: repairing orphan course', [
+                    'courseid' => $course['id'],
+                    'shortname' => $course['shortname'] ?? null,
+                    'has_entry' => !empty($getpercipioentry),
+                    'entry_cmid' => $getpercipioentry ? $getpercipioentry->cmid : null,
+                ]);
+                update_course((object) $course);
+
+                // Prefer an existing activity module for this course to avoid duplicates.
+                $reusecm = false;
+                if ($percipiomodule) {
+                    $existingcms = $DB->get_records('course_modules', array(
+                        'course' => $course['id'],
+                        'module' => $percipiomodule->id,
+                        'deletioninprogress' => 0,
+                    ), 'id ASC', '*', 0, 1);
+                    if (!empty($existingcms)) {
+                        $existingcmrecord = reset($existingcms);
+                        $reusecm = get_coursemodule_from_id('', $existingcmrecord->id, $course['id'], false, IGNORE_MISSING);
+                    }
+                }
+
+                $fromform['course'] = $course['id'];
+                if ($reusecm) {
+                    $fromform['coursemodule'] = $reusecm->id;
+                    $fromform['instance'] = $reusecm->instance;
+                    $fromform['add'] = 0;
+                    $fromform['update'] = $reusecm->id;
+                    $mform = new $mformclassname((object)$fromform, 0, null, (object)$course);
+                    update_moduleinfo($reusecm, (object)$fromform, get_course($course['id']), $mform);
+                    $resolvedcmid = $reusecm->id;
+                } else {
+                    $fromform['coursemodule'] = 0;
+                    $fromform['instance'] = 0;
+                    $fromform['add'] = $course["courseformatoptions"][0]["value"];
+                    $fromform['update'] = 0;
+                    $mform = new $mformclassname((object)$fromform, 0, null, (object)$course);
+                    $addmodule = add_moduleinfo((object)$fromform, (object)$course, $mform);
+                    $resolvedcmid = $addmodule->coursemodule;
+                }
+
+                $entry = $DB->get_record('percipio_entries', array('courseid' => $course['id']));
+                if ($entry) {
+                    $record = new stdClass();
+                    $record->id = $entry->id;
+                    $record->percipioid = $course['shortname'];
+                    $record->cmid = $resolvedcmid;
+                    $record->imageurl = $course['imageurl'];
+                    $record->imageuploaded = 0;
+                    $record->timemodified = time();
+                    $DB->update_record('percipio_entries', $record);
+                } else {
+                    $record = new stdClass();
+                    $record->courseid = $course['id'];
+                    $record->percipioid = $course['shortname'];
+                    $record->cmid = $resolvedcmid;
+                    $record->imageurl = $course['imageurl'];
+                    $record->timemodified = time();
+                    $DB->insert_record('percipio_entries', $record);
+                }
+                $msg = get_string('courseupdated', 'mod_percipio');
+                $enableself = true;
             } else {
-                // Additional check to delete any redundant/existing course entry.
-                // From {percipio_entries} when moodle course does not exists.
-                $delparams = ['percipioid' => $course['shortname'], 'courseid' => $course['id']];
-                $DB->delete_records_select('percipio_entries', "percipioid = :percipioid AND courseid != :courseid", $delparams);
+                // Only remove entries whose Moodle course no longer exists; never delete live
+                self::cleanup_orphan_percipio_entries($course['shortname'], $course['id']);
                 // Update course if user has all required capabilities.
+                $sortorderbefore = array_key_exists('sortorder', $course) ? $course['sortorder'] : '(not set)';
+                // TODO PER-18454: will remove after root cause is confirmed
+                percipio_log_import_debug('percipio_import_course: sortorder before update', [
+                    'courseid' => $course['id'],
+                    'shortname' => $course['shortname'] ?? null,
+                    'sortorder' => $sortorderbefore,
+                    'sortorder_isset' => array_key_exists('sortorder', $course),
+                ]);
+                if (!isset($course['sortorder']) || $course['sortorder'] === null) {
+                    unset($course['sortorder']);
+                }
+                percipio_log_import_debug('percipio_import_course: course data before update', [
+                    'courseid' => $course['id'],
+                    'fullname' => $course['fullname'] ?? null,
+                    'shortname' => $course['shortname'] ?? null,
+                    'category' => $course['category'] ?? null,
+                    'format' => $course['format'] ?? null,
+                    'sortorder' => $course['sortorder'] ?? '(unset - preserved from DB)',
+                ]);
                 update_course((object) $course);
                 $msg = get_string('courseupdated', 'mod_percipio');
 
@@ -837,5 +938,77 @@ class mod_percipio_api_external extends external_api {
                 'code' => new external_value(PARAM_INT, get_string('code', 'mod_percipio')),
             )
         );
+    }
+
+    /**
+     * Clean up only true orphan percipio_entries for a Percipio content id.
+     *
+     * Deletes rows whose courseid no longer exists in {course}. Entries that
+     * still belong to other existing Moodle courses are left intact and logged
+     * for audit, so shared/reused shortnames cannot wipe live tracking data.
+     *
+     * @param string $percipioid Percipio content UUID / course shortname
+     * @param int $currentcourseid Moodle course id being imported
+     * @return void
+     */
+    private static function cleanup_orphan_percipio_entries($percipioid, $currentcourseid) {
+        global $DB;
+
+        $params = [
+            'percipioid' => $percipioid,
+            'courseid' => $currentcourseid,
+        ];
+
+        // Audit: other existing courses that share this percipioid (do not delete).
+        $conflicts = $DB->get_records_sql(
+            "SELECT pe.id, pe.courseid, pe.cmid
+               FROM {percipio_entries} pe
+               JOIN {course} c ON c.id = pe.courseid
+              WHERE pe.percipioid = :percipioid
+                AND pe.courseid <> :courseid",
+            $params
+        );
+        if (!empty($conflicts)) {
+            $summary = [];
+            foreach ($conflicts as $row) {
+                $summary[] = [
+                    'id' => (int) $row->id,
+                    'courseid' => (int) $row->courseid,
+                    'cmid' => $row->cmid,
+                ];
+            }
+            percipio_log_import_debug('percipio_import_course: matching percipioid on other existing courses left intact', [
+                'percipioid' => $percipioid,
+                'current_courseid' => (int) $currentcourseid,
+                'other_entries' => $summary,
+            ]);
+        }
+
+        // Safe cleanup: only rows whose Moodle course has been deleted.
+        $orphans = $DB->get_records_sql(
+            "SELECT pe.id, pe.courseid, pe.cmid
+               FROM {percipio_entries} pe
+          LEFT JOIN {course} c ON c.id = pe.courseid
+              WHERE pe.percipioid = :percipioid
+                AND c.id IS NULL",
+            ['percipioid' => $percipioid]
+        );
+        if (!empty($orphans)) {
+            $summary = [];
+            foreach ($orphans as $row) {
+                $summary[] = [
+                    'id' => (int) $row->id,
+                    'courseid' => (int) $row->courseid,
+                    'cmid' => $row->cmid,
+                ];
+            }
+            percipio_log_import_debug('percipio_import_course: deleting orphaned percipio_entries with missing course', [
+                'percipioid' => $percipioid,
+                'entries' => $summary,
+            ]);
+            foreach ($orphans as $row) {
+                $DB->delete_records('percipio_entries', ['id' => $row->id]);
+            }
+        }
     }
 }

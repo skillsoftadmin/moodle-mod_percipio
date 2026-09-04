@@ -634,6 +634,26 @@ function custom_create_course($data, $editoroptions = null) {
     }
     $data->visibleold = $data->visible;
 
+    $sortorderbefore = property_exists($data, 'sortorder') ? $data->sortorder : '(not set)';
+    // TODO PER-18454: will remove after root cause is confirmed
+    percipio_log_import_debug('custom_create_course: sortorder before fix', [
+        'shortname' => $data->shortname ?? null,
+        'sortorder' => $sortorderbefore,
+        'sortorder_isset' => property_exists($data, 'sortorder'),
+    ]);
+
+    if (!isset($data->sortorder) || $data->sortorder === null) {
+        $data->sortorder = 0;
+    }
+
+    percipio_log_import_debug('custom_create_course: course data before insert', [
+        'fullname' => $data->fullname ?? null,
+        'shortname' => $data->shortname ?? null,
+        'category' => $data->category ?? null,
+        'format' => $data->format ?? null,
+        'sortorder' => $data->sortorder,
+    ]);
+
     $newcourseid = $DB->insert_record('course', $data);
     $context = context_course::instance($newcourseid, MUST_EXIST);
 
@@ -701,6 +721,15 @@ function custom_create_course($data, $editoroptions = null) {
     $handler->instance_form_save($data, true);
 
     return $course;
+}
+
+// Log percipio course import diagnostics via Moodle debugging().
+function percipio_log_import_debug($message, array $context = []) {
+    $entry = '[mod_percipio] ' . $message;
+    if (!empty($context)) {
+        $entry .= ' ' . json_encode($context, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+    }
+    debugging($entry, DEBUG_DEVELOPER);
 }
 
 // Log key percipio image upload events (PHP error log).
